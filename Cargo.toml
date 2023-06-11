@@ -1,0 +1,12 @@
+[package]
+name = "merkle-search-tree"
+description = "Efficient State-Based CRDT and Replica Anti-Entropy"
+authors = ["Dom Dwyer <dom@itsallbroken.com>"]
+version = "0.0.1"
+edition = "2021"
+
+license = "Apache-2.0"
+documentation = "https://docs.rs/bloom2"
+repository = "https://github.com/domodwyer/merkle-search-tree"
+
+[dependencies]
