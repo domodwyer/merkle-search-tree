@@ -1,0 +1,17 @@
+---
+source: src/visitor/dot.rs
+expression: v.into_inner().finalise()
+---
+digraph g {
+	page_1:B -> page_2:head;
+	page_2 [shape=record, label="<head>Level 0|<A>·|A"]
+
+	page_1:D -> page_3:head;
+	page_3 [shape=record, label="<head>Level 0|<C>·|C"]
+
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<B>·|B|<D>·|D"]
+
+}
+

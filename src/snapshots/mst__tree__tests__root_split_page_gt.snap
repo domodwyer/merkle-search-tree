@@ -1,0 +1,15 @@
+---
+source: src/tree.rs
+assertion_line: 205
+expression: v.finalise()
+---
+digraph g {
+	page_1:B -> page_2:head;
+	page_2 [shape=record, label="<head>Level 0|<A>·|A"]
+
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 1|<B>·|B"]
+
+}
+

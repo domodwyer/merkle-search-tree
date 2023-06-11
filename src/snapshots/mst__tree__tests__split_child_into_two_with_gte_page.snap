@@ -1,0 +1,20 @@
+---
+source: src/tree.rs
+expression: v.finalise()
+---
+digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 5|<A>·|A|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+
+	page_2:D -> page_3:head;
+	page_3 [shape=record, label="<head>Level 0|<B>·|B|<C>·|C"]
+
+	page_2 [shape=record, label="<head>Level 1|<D>·|D|<high_page>·"]
+	page_2:high_page -> page_4:head [fontcolor=red color=red label="high page"];
+
+	page_4 [shape=record, label="<head>Level 0|<E>·|E"]
+
+}
+

@@ -1,0 +1,17 @@
+---
+source: src/tree.rs
+expression: dot
+---
+digraph g {
+	root [shape=diamond style=dotted];
+	root -> page_1:head
+	page_1 [shape=record, label="<head>Level 22|<00000000000111111111111111111111>·|00000000000111111111111111111111|<high_page>·"]
+	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
+
+	page_2 [shape=record, label="<head>Level 21|<0000000000240111111111111111111111>·|0000000000240111111111111111111111|<high_page>·"]
+	page_2:high_page -> page_3:head [fontcolor=red color=red label="high page"];
+
+	page_3 [shape=record, label="<head>Level 0|<11111111111111111111111111111111>·|11111111111111111111111111111111"]
+
+}
+
