@@ -208,9 +208,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, hash::Hasher as _};
 
     use proptest::prelude::*;
+    use siphasher::sip128::Hasher128;
 
     use crate::{
         assert_tree,
@@ -225,6 +226,36 @@ mod tests {
     };
 
     use super::*;
+
+    /// A hash implementation that does not rely on the stdlib Hash trait, and
+    /// therefore produces stable hashes across rust version changes /
+    /// platforms.
+    #[derive(Debug, Default)]
+    struct FixtureHasher;
+    impl Hasher<16, u64> for FixtureHasher {
+        fn hash(&self, value: &u64) -> Digest<16> {
+            let mut h = SipHasher24::default();
+            h.write_u64(*value);
+            Digest::new(h.finish128().as_bytes())
+        }
+    }
+
+    #[test]
+    fn test_hash_fixture() {
+        let mut t = MerkleSearchTree::new_with_hasher(FixtureHasher::default());
+
+        for i in 0..1000 {
+            t.upsert(i, &i);
+        }
+
+        // This hash ensures that any changes to this construction do not result
+        // in existing hashes being invalidated / unequal for the same data.
+        let fixture_hash = [
+            197, 67, 0, 142, 218, 237, 158, 223, 66, 171, 252, 229, 26, 236, 1, 82,
+        ];
+
+        assert_eq!(t.root_hash().as_ref(), &fixture_hash);
+    }
 
     #[test]
     fn test_level_generation() {
