@@ -88,7 +88,7 @@ fn generate_root<F, T>(
     // Benchmark the performance of rebuilding the tree after changing the value
     // of a single node.
     g.bench_with_input(
-        BenchmarkId::new(format!("{}_partial_rebild", name), n_values),
+        BenchmarkId::new(format!("{}_minimal_rebuild", name), n_values),
         &values,
         |b, values| {
             // Populate the tree
@@ -102,6 +102,37 @@ fn generate_root<F, T>(
 
             // Invalidate that hash
             t.upsert(values.last().as_ref().unwrap(), &424242);
+
+            // Measure rebuilding the root hash
+            b.iter_batched(
+                || t.clone(),
+                |mut t| {
+                    let _v = t.root_hash();
+                },
+                criterion::BatchSize::NumIterations(1),
+            );
+        },
+    );
+
+    // Benchmark the performance of rebuilding the tree after changing the value
+    // of half the nodes.
+    g.bench_with_input(
+        BenchmarkId::new(format!("{}_partial_rebuild", name), n_values),
+        &values,
+        |b, values| {
+            // Populate the tree
+            let mut t = MerkleSearchTree::default();
+            for v in values {
+                t.upsert(v, &42);
+            }
+
+            // Generate full tree hash
+            let _ = t.root_hash();
+
+            // Invalidate the hash of N/2 nodes
+            for v in values.iter().take(n_values / 2) {
+                t.upsert(v, &42424242);
+            }
 
             // Measure rebuilding the root hash
             b.iter_batched(
