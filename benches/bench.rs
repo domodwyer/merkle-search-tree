@@ -84,6 +84,35 @@ fn generate_root<F, T>(
             criterion::BatchSize::NumIterations(1),
         );
     });
+
+    // Benchmark the performance of rebuilding the tree after changing the value
+    // of a single node.
+    g.bench_with_input(
+        BenchmarkId::new(format!("{}_partial_rebild", name), n_values),
+        &values,
+        |b, values| {
+            // Populate the tree
+            let mut t = MerkleSearchTree::default();
+            for v in values {
+                t.upsert(v, &42);
+            }
+
+            // Generate full tree hash
+            let _ = t.root_hash();
+
+            // Invalidate that hash
+            t.upsert(values.last().as_ref().unwrap(), &424242);
+
+            // Measure rebuilding the root hash
+            b.iter_batched(
+                || t.clone(),
+                |mut t| {
+                    let _v = t.root_hash();
+                },
+                criterion::BatchSize::NumIterations(1),
+            );
+        },
+    );
 }
 
 criterion_group!(benches, bench);

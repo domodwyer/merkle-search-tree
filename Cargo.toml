@@ -21,6 +21,9 @@ insta = "1.29.0"
 paste = "1.0.12"
 proptest = "1.2.0"
 
+[lib]
+bench = false
+
 [[bench]]
 name = "bench"
 harness = false
