@@ -131,9 +131,7 @@ where
         // NOTE: changing the ordering of the hashed elements is a breaking
         // change.
         //
-        // This order may be changed if releasing a new major version.
-        //
-        // TODO(dom:test): fixture
+        // This order may be changed only if releasing a new major version.
 
         // Hash all nodes & their child pages
         for n in &mut self.nodes {

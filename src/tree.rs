@@ -53,7 +53,8 @@ type DefaultHasher = SipHasher;
 ///
 /// Any change to the underlying hash construction algorithm implemented in this
 /// crate that would cause existing hashes to no longer match will not occur
-/// without a breaking change major semver version bump.
+/// without a breaking change major semver version bump once this crate reaches
+/// stability (>1.0.0).
 ///
 /// # Lazy Tree Hash Generation
 ///
