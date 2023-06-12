@@ -22,11 +22,11 @@ type DefaultHasher = SipHasher;
 ///
 /// # Merkle Search Trees
 ///
-/// In addition to the properties of a regular Merkle/hash tree, a MST is a
-/// searchable balanced B-tree with variable, probabilistically bounded page
-/// sizes and a deterministic representation irrespective of insert order -
-/// these properties make a MST a useful data structure for efficient
-/// state-based CRDT replication and anti-entropy.
+/// In addition to the normal hash & consistency properties of a regular
+/// Merkle/hash tree, a MST is a searchable balanced B-tree with variable,
+/// probabilistically bounded page sizes and a deterministic representation
+/// irrespective of insert order - these properties make a MST a useful data
+/// structure for efficient state-based CRDT replication and anti-entropy.
 ///
 /// Keys are stored in sort order (from min to max) in an MST. If monotonic keys
 /// are inserted, a minimal amount of hash re-computation needs to be performed
@@ -36,10 +36,10 @@ type DefaultHasher = SipHasher;
 ///
 /// # Portability & Compatibility
 ///
-/// For two [`MerkleSearchTree`] to be useful, both instances msut produce
-/// identical hash outputs. To do so, they must be using the same [`Hasher`]
-/// implementation, and in turn it must output a deterministic hash across all
-/// peers interacting with the [`MerkleSearchTree`].
+/// For two [`MerkleSearchTree`] to be useful, both instances must produce
+/// identical hash digests for a given input. To do so, they must be using the
+/// same [`Hasher`] implementation, and in turn it must output a deterministic
+/// hash across all peers interacting with the [`MerkleSearchTree`].
 ///
 /// For ease of use, this library uses the standard library [`Hash`] trait by
 /// default to hash key and value types. The documentation for the trait warns
@@ -50,6 +50,19 @@ type DefaultHasher = SipHasher;
 /// versions, you should consider implementing a fully-deterministic [`Hasher`]
 /// specialised to your key/value types that does not make use of the [`Hash`]
 /// trait for correctness.
+///
+/// # Lazy Tree Hash Generation
+///
+/// Each page within the tree maintains a cache of the pre-computed hash of
+/// itself, and the sub-tree rooted from it (all pages & nodes below it).
+/// Successive root hash queries will re-use this cached value to avoid hashing
+/// the full tree each time.
+///
+/// Upserting elements into the tree invalidates the cached hashes of the pages
+/// along the path to the leaf, and the leaf page itself. To amortise the cost
+/// of regenerating these hashes, the affected pages are marked as "dirty",
+/// causing them to be rehashed next time the root hash is requested. This
+/// allows hash regeneration to be occur once per batch of upsert operations.
 ///
 /// # Example
 ///
@@ -75,7 +88,7 @@ type DefaultHasher = SipHasher;
 /// assert_ne!(hash_1, hash_2.as_ref());
 /// ```
 ///
-/// [paper]: https://inria.hal.science/hal-02303490/document
+/// [paper]: https://inria.hal.science/hal-02303490
 #[derive(Debug, Clone)]
 pub struct MerkleSearchTree<K, V, H = DefaultHasher, const N: usize = 16> {
     /// User-provided hasher implementation used for key/value digests.
