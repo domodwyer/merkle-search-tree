@@ -62,7 +62,7 @@ type DefaultHasher = SipHasher;
 ///
 /// // Obtain a root hash / merkle proof covering all the tree data
 /// let hash_1 = t.root_hash().to_owned();
-/// println!("{:?}", hash_1);
+/// println!("{:?}", hash_1.as_ref());
 ///
 /// // Modify the MST, reflecting the new value of an existing key
 /// t.upsert("bananas", &"amazing");
@@ -72,7 +72,7 @@ type DefaultHasher = SipHasher;
 /// println!("{:?}", hash_2);
 ///
 /// // The root hash changes to reflect the changed state
-/// assert_ne!(hash_1, hash_2);
+/// assert_ne!(hash_1, hash_2.as_ref());
 /// ```
 ///
 /// [paper]: https://inria.hal.science/hal-02303490/document
