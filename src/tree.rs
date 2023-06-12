@@ -51,6 +51,10 @@ type DefaultHasher = SipHasher;
 /// specialised to your key/value types that does not make use of the [`Hash`]
 /// trait for correctness.
 ///
+/// Any change to the underlying hash construction algorithm implemented in this
+/// crate that would cause existing hashes to no longer match will not occur
+/// without a breaking change major semver version bump.
+///
 /// # Lazy Tree Hash Generation
 ///
 /// Each page within the tree maintains a cache of the pre-computed hash of
