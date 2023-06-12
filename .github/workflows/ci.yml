@@ -42,3 +42,9 @@ jobs:
       with:
         command: clippy
         args: --all-features
+
+    - name: docs
+      uses: actions-rs/cargo@v1
+      with:
+        command: doc
+        args: --document-private-items --no-deps

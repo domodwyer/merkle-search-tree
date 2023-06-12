@@ -89,7 +89,7 @@ type DefaultHasher = SipHasher;
 /// println!("{:?}", hash_2);
 ///
 /// // The root hash changes to reflect the changed state
-/// assert_ne!(hash_1, hash_2.as_ref());
+/// assert_ne!(hash_1.as_ref(), hash_2.as_ref());
 /// ```
 ///
 /// [paper]: https://inria.hal.science/hal-02303490
