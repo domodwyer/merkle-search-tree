@@ -1,9 +1,9 @@
-use std::marker::PhantomData;
+use std::{fmt::Display, marker::PhantomData};
 
 use siphasher::sip128::SipHasher24;
 
 use crate::{
-    digest::{self, siphash::SipHasher, Hasher, KeyDigest, RootHash, ValueDigest},
+    digest::{self, siphash::SipHasher, Hasher, RootHash, ValueDigest},
     node::Node,
     page::{insert_intermediate_page, Page},
     visitor::Visitor,
@@ -15,10 +15,10 @@ type DefaultHasher = SipHasher;
 /// An implementation of the Merkle Search Tree as described in [Merkle Search
 /// Trees: Efficient State-Based CRDTs in Open Networks][paper].
 ///
-/// This implementation stores neither keys nor values directly, only hashes.
-/// This allows greatest flexibility, as the user can choose the most
-/// appropriate key/value storage data structure, while using the MST strictly
-/// for anti-entropy / Merkle proofs.
+/// This implementation stores only keys directly in the tree - hashes of values
+/// are retained instead of the actual value. This allows greatest flexibility,
+/// as the user can choose the most appropriate key/value storage data
+/// structure, while using the MST strictly for anti-entropy / Merkle proofs.
 ///
 /// # Merkle Search Trees
 ///
@@ -74,15 +74,15 @@ type DefaultHasher = SipHasher;
 /// use merkle_search_tree::MerkleSearchTree;
 ///
 /// let mut t = MerkleSearchTree::default();
-/// t.upsert("bananas", &"great");
-/// t.upsert("plátano", &"muy bien");
+/// t.upsert(&"bananas", &"great");
+/// t.upsert(&"plátano", &"muy bien");
 ///
 /// // Obtain a root hash / merkle proof covering all the tree data
 /// let hash_1 = t.root_hash().to_owned();
 /// println!("{:?}", hash_1.as_ref());
 ///
 /// // Modify the MST, reflecting the new value of an existing key
-/// t.upsert("bananas", &"amazing");
+/// t.upsert(&"bananas", &"amazing");
 ///
 /// // Obtain an updated root hash
 /// let hash_2 = t.root_hash().to_owned();
@@ -101,10 +101,9 @@ pub struct MerkleSearchTree<K, V, H = DefaultHasher, const N: usize = 16> {
     /// Internal hasher used to produce page/root digests.
     tree_hasher: SipHasher24,
 
-    root: Page<N>,
+    root: Page<N, K>,
     root_hash: Option<RootHash>,
 
-    _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
@@ -115,7 +114,6 @@ impl<K, V> Default for MerkleSearchTree<K, V> {
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
-            _key_type: Default::default(),
             _value_type: Default::default(),
         }
     }
@@ -123,7 +121,7 @@ impl<K, V> Default for MerkleSearchTree<K, V> {
 
 impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
 where
-    H: Hasher<N, K> + Hasher<N, V>,
+    K: Clone,
 {
     /// Initialise a new [`MerkleSearchTree`] using the provided [`Hasher`] of
     /// keys & values.
@@ -133,48 +131,8 @@ where
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
-            _key_type: PhantomData::default(),
             _value_type: PhantomData::default(),
         }
-    }
-
-    /// Add or update the value for `key`.
-    ///
-    /// This method invalidates the cached, precomputed root hash value, if any
-    /// (even if the value is not modified).
-    #[inline]
-    pub fn upsert(&mut self, key: K, value: &'_ V) {
-        let key_hash = KeyDigest::new(self.hasher.hash(&key));
-        let value_hash = ValueDigest::new(self.hasher.hash(value));
-        let level = digest::level(&self.hasher.hash(&key));
-
-        // Invalidate the root hash - it always changes when a key is upserted.
-        self.root_hash = None;
-
-        if !self.root.upsert(&key_hash, level, value_hash.clone()) {
-            // As an optimisation and simplification, if the current root is
-            // empty, simply replace it with the new root.
-            if self.root.nodes().is_empty() {
-                let node = Node::new(key_hash.clone(), value_hash, None);
-                self.root = Page::new(level, vec![node]);
-                return;
-            }
-
-            insert_intermediate_page(&mut &mut self.root, key_hash, level, value_hash);
-        }
-    }
-
-    /// Generate the root hash if necessary, returning the result.
-    ///
-    /// If there's a precomputed root hash, it is immediately returned.
-    ///
-    /// If no cached root hash is available all tree pages with modified child
-    /// nodes are rehashed and the resulting new root hash is returned.
-    #[inline]
-    pub fn root_hash(&mut self) -> &RootHash {
-        self.root.maybe_generate_hash(&self.tree_hasher);
-        self.root_hash = self.root.hash().cloned().map(RootHash::new);
-        self.root_hash.as_ref().unwrap()
     }
 
     /// Return the precomputed root hash, if any.
@@ -192,7 +150,56 @@ where
 
 impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
 where
-    K: std::fmt::Debug,
+    K: AsRef<[u8]>,
+{
+    /// Generate the root hash if necessary, returning the result.
+    ///
+    /// If there's a precomputed root hash, it is immediately returned.
+    ///
+    /// If no cached root hash is available all tree pages with modified child
+    /// nodes are rehashed and the resulting new root hash is returned.
+    #[inline]
+    pub fn root_hash(&mut self) -> &RootHash {
+        self.root.maybe_generate_hash(&self.tree_hasher);
+        self.root_hash = self.root.hash().cloned().map(RootHash::new);
+        self.root_hash.as_ref().unwrap()
+    }
+}
+
+impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
+where
+    K: PartialOrd + Clone,
+    H: Hasher<N, K> + Hasher<N, V>,
+{
+    /// Add or update the value for `key`.
+    ///
+    /// This method invalidates the cached, precomputed root hash value, if any
+    /// (even if the value is not modified).
+    #[inline]
+    pub fn upsert(&mut self, key: &'_ K, value: &'_ V) {
+        let value_hash = ValueDigest::new(self.hasher.hash(value));
+        let level = digest::level(&self.hasher.hash(key));
+
+        // Invalidate the root hash - it always changes when a key is upserted.
+        self.root_hash = None;
+
+        if !self.root.upsert(key, level, value_hash.clone()) {
+            // As an optimisation and simplification, if the current root is
+            // empty, simply replace it with the new root.
+            if self.root.nodes().is_empty() {
+                let node = Node::new(key.clone(), value_hash, None);
+                self.root = Page::new(level, vec![node]);
+                return;
+            }
+
+            insert_intermediate_page(&mut &mut self.root, key.clone(), level, value_hash);
+        }
+    }
+}
+
+impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
+where
+    K: PartialOrd + Display,
 {
     /// Perform a depth-first, pre-order traversal, yielding each [`Page`] and
     /// [`Node`] to `visitor`.
@@ -200,7 +207,7 @@ where
     /// A pre-order traversal yields nodes in key order, from min to max.
     pub fn pre_order_traversal<T>(&self, visitor: &mut T)
     where
-        T: Visitor<N>,
+        T: Visitor<N, K>,
     {
         self.root.pre_order_traversal(visitor, false);
     }
@@ -220,8 +227,7 @@ mod tests {
             Digest,
         },
         visitor::{
-            assert_count::InvariantAssertCount, assert_order::InvariantAssertOrder,
-            dot::DotVisitor, nop::NopVisitor,
+            assert_count::InvariantAssertCount, assert_order::InvariantAssertOrder, nop::NopVisitor,
         },
     };
 
@@ -232,6 +238,11 @@ mod tests {
     /// platforms.
     #[derive(Debug, Default)]
     struct FixtureHasher;
+    impl Hasher<16, IntKey> for FixtureHasher {
+        fn hash(&self, value: &IntKey) -> Digest<16> {
+            self.hash(&value.0)
+        }
+    }
     impl Hasher<16, u64> for FixtureHasher {
         fn hash(&self, value: &u64) -> Digest<16> {
             let mut h = SipHasher24::default();
@@ -240,18 +251,38 @@ mod tests {
         }
     }
 
+    /// An wrapper over integers, implementing `AsRef<[u8]>` with deterministic
+    /// output across platforms with differing endian-ness.
+    #[derive(Debug, PartialOrd, PartialEq, Clone, Hash)]
+    struct IntKey(u64, [u8; 8]);
+    impl IntKey {
+        fn new(v: u64) -> Self {
+            Self(v, v.to_be_bytes())
+        }
+    }
+    impl AsRef<[u8]> for IntKey {
+        fn as_ref(&self) -> &[u8] {
+            &self.1
+        }
+    }
+    impl Display for IntKey {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            self.0.fmt(f)
+        }
+    }
+
     #[test]
     fn test_hash_fixture() {
         let mut t = MerkleSearchTree::new_with_hasher(FixtureHasher::default());
 
         for i in 0..1000 {
-            t.upsert(i, &i);
+            t.upsert(&IntKey::new(i), &i);
         }
 
         // This hash ensures that any changes to this construction do not result
         // in existing hashes being invalidated / unequal for the same data.
         let fixture_hash = [
-            197, 67, 0, 142, 218, 237, 158, 223, 66, 171, 252, 229, 26, 236, 1, 82,
+            57, 77, 199, 66, 89, 217, 207, 166, 136, 181, 45, 80, 108, 80, 94, 3,
         ];
 
         assert_eq!(t.root_hash().as_ref(), &fixture_hash);
@@ -283,7 +314,7 @@ mod tests {
                     let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
 					$(
-						t.upsert($key, $value);
+						t.upsert(&$key, $value);
 					)*
 
                     assert_tree!(t)
@@ -534,7 +565,7 @@ mod tests {
         // Invariant 1: the tree structure is deterministic for a given set of
         // inputs (regardless of insert order)
         #[test]
-        fn prop_deterministic_construction(keys in proptest::collection::vec(any::<usize>(), 0..64)) {
+        fn prop_deterministic_construction(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
             // keys is a HashSet of (keys, level), which will iterate in random
             // order.
             //
@@ -554,11 +585,11 @@ mod tests {
             let mut unique = HashSet::new();
             for key in a_values {
                 if unique.insert(key) {
-                    a.upsert(key, &"bananas");
+                    a.upsert(&IntKey::new(key), &"bananas");
                 }
             }
             for key in b_values {
-                b.upsert(key, &"bananas");
+                b.upsert(&IntKey::new(key), &"bananas");
             }
 
             assert_eq!(a.root_hash(), b.root_hash());
@@ -575,7 +606,7 @@ mod tests {
 
         // Invariant 2: values in the tree are stored in key order.
         #[test]
-        fn prop_preorder_traversal_key_order(keys in proptest::collection::vec(any::<usize>(), 0..64)) {
+        fn prop_preorder_traversal_key_order(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
             let mut t = MerkleSearchTree::default();
 
             let mut unique = HashSet::new();
@@ -584,7 +615,7 @@ mod tests {
             for key in keys {
                 if !unique.insert(key) {
                     want_len += 1;
-                    t.upsert(key, &"bananas");
+                    t.upsert(&IntKey::new(key), &"bananas");
                 }
             }
 
@@ -596,7 +627,7 @@ mod tests {
         // Invariant 3: two independent trees contain the same data iff their
         // root hashes are identical
         #[test]
-        fn prop_root_hash_data_equality(keys in proptest::collection::vec(any::<usize>(), 0..64)) {
+        fn prop_root_hash_data_equality(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
             let mut a = MerkleSearchTree::default();
             let mut b = MerkleSearchTree::default();
 
@@ -613,13 +644,13 @@ mod tests {
                     continue;
                 }
 
-                a.upsert(key, &"bananas");
+                a.upsert(&IntKey::new(key), &"bananas");
                 assert_eq!(a.root_hash_cached(), None);
 
                 // The trees diverge
                 assert_ne!(a.root_hash(), b.root_hash());
 
-                b.upsert(key, &"bananas");
+                b.upsert(&IntKey::new(key), &"bananas");
                 assert_eq!(b.root_hash_cached(), None);
 
                 // And then converge
@@ -628,14 +659,14 @@ mod tests {
 
             // Update a value for an existing key
             if let Some(key) = last_entry {
-                 b.upsert(key, &"platanos");
+                 b.upsert(&IntKey::new(key), &"platanos");
                  assert_eq!(b.root_hash_cached(), None);
 
                  // The trees diverge
                  assert_ne!(a.root_hash(), b.root_hash());
 
                  // And converge once again
-                 b.upsert(key, &"platanos");
+                 b.upsert(&IntKey::new(key), &"platanos");
                  assert_eq!(b.root_hash_cached(), None);
 
                  assert_ne!(a.root_hash(), b.root_hash());
@@ -649,80 +680,5 @@ mod tests {
             b.pre_order_traversal(&mut asserter);
             asserter.unwrap_count(unique.len());
         }
-    }
-
-    #[test]
-    fn test_prop_fail() {
-        let keys: &[usize] = &[
-            10001896382173004444,
-            11398,
-            518193510222216342,
-            518193512675516780,
-        ];
-
-        let mut a = MerkleSearchTree::default();
-        let mut b = MerkleSearchTree::default();
-
-        // They are equal when empty.
-        assert_eq!(a.root_hash_cached(), b.root_hash_cached());
-        assert_eq!(a.root_hash(), b.root_hash());
-        assert_eq!(a.root_hash_cached(), b.root_hash_cached());
-
-        let mut unique = HashSet::new();
-        let last_entry = keys.first().cloned();
-        for &key in keys {
-            if !unique.insert(key) {
-                // Root hashes may compute to the same value if the same
-                // (key, value) pair is inserted twice, causing the
-                // divergence assert below to spuriously trigger.
-                continue;
-            }
-
-            a.upsert(key, &"bananas");
-            assert_eq!(a.root_hash_cached(), None);
-
-            a.root.maybe_generate_hash(&a.tree_hasher);
-
-            let mut dot = DotVisitor::default();
-            a.pre_order_traversal(&mut dot);
-
-            // The trees diverge
-            assert_ne!(a.root_hash(), b.root_hash());
-
-            b.upsert(key, &"bananas");
-            assert_eq!(b.root_hash_cached(), None);
-
-            // And then converge
-            assert_eq!(a.root_hash(), b.root_hash());
-            assert_eq!(a.root_hash_cached(), b.root_hash_cached());
-            assert_eq!(a.root_hash().clone(), *a.root_hash_cached().unwrap());
-        }
-
-        // Update a value for an existing key
-        if let Some(key) = last_entry {
-            a.upsert(key, &"platanos");
-            assert_eq!(a.root_hash_cached(), None);
-
-            // The trees diverge
-            assert_ne!(a.root_hash(), b.root_hash());
-
-            // And converge once again
-            b.upsert(key, &"platanos");
-            assert_eq!(b.root_hash_cached(), None);
-
-            assert_eq!(a.root_hash(), b.root_hash());
-            assert_eq!(a.root_hash_cached(), b.root_hash_cached());
-            assert_eq!(a.root_hash().clone(), *a.root_hash_cached().unwrap());
-        }
-
-        let mut asserter =
-            InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-        a.pre_order_traversal(&mut asserter);
-        asserter.unwrap_count(unique.len());
-
-        let mut asserter =
-            InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-        b.pre_order_traversal(&mut asserter);
-        asserter.unwrap_count(unique.len());
     }
 }

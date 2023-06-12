@@ -5,13 +5,13 @@ expression: dot
 digraph g {
 	root [shape=diamond style=dotted];
 	root -> page_1:head
-	page_1 [shape=record, label="<head>Level 5|<0024011111111111111111111111111111>·|0024011111111111111111111111111111|<high_page>·"]
+	page_1 [shape=record, label="<head>Level 5|<A>·|A|<high_page>·"]
 	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
 
-	page_2:2401111111111111111111111111111111 -> page_3:head;
-	page_3 [shape=record, label="<head>Level 0|<11111111111111111111111111111111>·|11111111111111111111111111111111"]
+	page_2:D -> page_3:head;
+	page_3 [shape=record, label="<head>Level 0|<B>·|B|<C>·|C"]
 
-	page_2 [shape=record, label="<head>Level 1|<2401111111111111111111111111111111>·|2401111111111111111111111111111111"]
+	page_2 [shape=record, label="<head>Level 1|<D>·|D"]
 
 }
 

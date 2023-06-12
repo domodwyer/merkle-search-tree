@@ -7,8 +7,9 @@ use super::{Digest, Hasher};
 /// A fast, non-cryptographic hash outputting 128-bit digests.
 ///
 /// This implementation is used as the default [`Hasher`] implementation, using
-/// the [`Hash`] trait, which may produce non-portable hashes as described in
-/// the documentation of the [`Hash`] trait, and [`Hasher`].
+/// the standard library [`Hash`] trait, which may produce non-portable hashes
+/// as described in the documentation of the [`Hash`] trait itself, and this
+/// crate's [`Hasher`].
 ///
 /// Users may choose to initialise the [`SipHasher`] with seed keys if untrusted
 /// key/value user input is used in a tree in order to prevent chosen-hash

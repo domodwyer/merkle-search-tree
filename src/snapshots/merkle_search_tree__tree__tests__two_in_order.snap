@@ -5,7 +5,7 @@ expression: dot
 digraph g {
 	root [shape=diamond style=dotted];
 	root -> page_1:head
-	page_1 [shape=record, label="<head>Level 0|<11111111111111111111111111111111>·|11111111111111111111111111111111"]
+	page_1 [shape=record, label="<head>Level 0|<A>·|A|<B>·|B"]
 
 }
 

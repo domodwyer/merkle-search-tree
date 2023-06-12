@@ -5,10 +5,10 @@ expression: v.into_inner().finalise()
 digraph g {
 	root [shape=diamond style=dotted];
 	root -> page_1:head
-	page_1 [shape=record, label="<head>Level 42|<10749111111111111111111111111111111>·|10749111111111111111111111111111111|<10750111111111111111111111111111111>·|10750111111111111111111111111111111|<high_page>·"]
+	page_1 [shape=record, label="<head>Level 42|<k1>·|k1|<k2>·|k2|<high_page>·"]
 	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
 
-	page_2 [shape=record, label="<head>Level 0|<12295104105103104491111111111111111111111111>·|12295104105103104491111111111111111111111111"]
+	page_2 [shape=record, label="<head>Level 0|<z_high1>·|z_high1"]
 
 }
 

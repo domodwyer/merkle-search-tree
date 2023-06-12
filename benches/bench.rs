@@ -24,7 +24,6 @@ fn bench(c: &mut Criterion) {
     }
 
     let mut g = c.benchmark_group("generate_root_hash");
-    generate_root(&mut g, "u64", 10_000, |rand| rand as u64);
     generate_root(&mut g, "string_36", 10_000, |rand| format!("{rand:0>36}"));
 }
 
@@ -35,7 +34,7 @@ fn insert_param<F, T>(
     make_value: F,
 ) where
     F: Fn(u16) -> T,
-    T: PartialOrd + Eq + Clone + Hash + 'static,
+    T: PartialOrd + Eq + Clone + Hash,
 {
     // Generate benchmark data using a pseudo random sequence with the same seed
     // for reproducible runs.
@@ -49,7 +48,7 @@ fn insert_param<F, T>(
         b.iter(|| {
             let mut t = MerkleSearchTree::default();
             for v in values {
-                t.upsert(v.clone(), &42);
+                t.upsert(&v, &42);
             }
         });
     });
@@ -62,7 +61,7 @@ fn generate_root<F, T>(
     make_value: F,
 ) where
     F: Fn(u16) -> T,
-    T: PartialOrd + Eq + Clone + Hash + 'static,
+    T: PartialOrd + Eq + Clone + Hash + AsRef<[u8]>,
 {
     // Generate benchmark data using a pseudo random sequence with the same seed
     // for reproducible runs.

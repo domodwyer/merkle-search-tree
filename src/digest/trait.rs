@@ -20,8 +20,8 @@
 /// The default [`Hasher`] implementation ([`SipHasher`]) outputs 128-bit/16
 /// byte digests which are strong, but not of cryptographic quality.
 ///
-/// [`SipHasher`] uses the [`Hash`] trait, which may produce non-portable hashes
-/// as described above (and in the [`Hash`] documentation).
+/// [`SipHasher`] uses the standard library [`Hash`] trait, which may produce
+/// non-portable hashes as described above (and in the [`Hash`] documentation).
 ///
 /// Users may choose to initialise the [`SipHasher`] with seed keys if untrusted
 /// key/value user input is used in a tree in order to prevent chosen-hash

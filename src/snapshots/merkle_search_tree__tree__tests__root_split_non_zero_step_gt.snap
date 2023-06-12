@@ -3,12 +3,12 @@ source: src/tree.rs
 expression: dot
 ---
 digraph g {
+	page_1:B -> page_2:head;
+	page_2 [shape=record, label="<head>Level 3|<A>·|A"]
+
 	root [shape=diamond style=dotted];
 	root -> page_1:head
-	page_1 [shape=record, label="<head>Level 9|<0000240111111111111111111111111111>·|0000240111111111111111111111111111|<high_page>·"]
-	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
-
-	page_2 [shape=record, label="<head>Level 3|<0240111111111111111111111111111111>·|0240111111111111111111111111111111"]
+	page_1 [shape=record, label="<head>Level 9|<B>·|B"]
 
 }
 

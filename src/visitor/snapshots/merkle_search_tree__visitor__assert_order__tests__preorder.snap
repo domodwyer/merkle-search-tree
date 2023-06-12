@@ -3,15 +3,21 @@ source: src/visitor/assert_order.rs
 expression: dot
 ---
 digraph g {
+	page_2:E -> page_3:head;
+	page_3 [shape=record, label="<head>Level 0|<B>·|B|<C>·|C|<D>·|D"]
+
+	page_1:I -> page_2:head;
+	page_2 [shape=record, label="<head>Level 1|<A>·|A|<E>·|E|<high_page>·"]
+	page_2:high_page -> page_4:head [fontcolor=red color=red label="high page"];
+
+	page_4 [shape=record, label="<head>Level 0|<F>·|F|<G>·|G|<H>·|H"]
+
+	page_1:K -> page_5:head;
+	page_5 [shape=record, label="<head>Level 1|<J>·|J"]
+
 	root [shape=diamond style=dotted];
 	root -> page_1:head
-	page_1 [shape=record, label="<head>Level 2|<01111111111111111111111111111111>·|01111111111111111111111111111111|<high_page>·"]
-	page_1:high_page -> page_2:head [fontcolor=red color=red label="high page"];
-
-	page_2:2401111111111111111111111111111111 -> page_3:head;
-	page_3 [shape=record, label="<head>Level 0|<11111111111111111111111111111111>·|11111111111111111111111111111111"]
-
-	page_2 [shape=record, label="<head>Level 1|<2401111111111111111111111111111111>·|2401111111111111111111111111111111"]
+	page_1 [shape=record, label="<head>Level 2|<I>·|I|<K>·|K"]
 
 }
 

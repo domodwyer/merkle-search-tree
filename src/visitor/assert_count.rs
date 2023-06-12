@@ -29,29 +29,29 @@ impl<T> InvariantAssertCount<T> {
     }
 }
 
-impl<const N: usize, T> Visitor<N> for InvariantAssertCount<T>
+impl<const N: usize, T, K> Visitor<N, K> for InvariantAssertCount<T>
 where
-    T: Visitor<N>,
+    T: Visitor<N, K>,
 {
     #[track_caller]
-    fn visit_node(&mut self, node: &Node<N>) -> bool {
+    fn visit_node(&mut self, node: &Node<N, K>) -> bool {
         self.count += 1;
         self.inner.visit_node(node)
     }
 
-    fn post_visit_node(&mut self, node: &Node<N>) -> bool {
+    fn post_visit_node(&mut self, node: &Node<N, K>) -> bool {
         self.inner.post_visit_node(node)
     }
 
-    fn visit_page(&mut self, page: &Page<N>, high_page: bool) -> bool {
+    fn visit_page(&mut self, page: &Page<N, K>, high_page: bool) -> bool {
         self.inner.visit_page(page, high_page)
     }
 
-    fn post_visit_page(&mut self, page: &Page<N>) -> bool {
+    fn post_visit_page(&mut self, page: &Page<N, K>) -> bool {
         self.inner.post_visit_page(page)
     }
 
-    fn pre_visit_node(&mut self, node: &Node<N>) -> bool {
+    fn pre_visit_node(&mut self, node: &Node<N, K>) -> bool {
         self.inner.pre_visit_node(node)
     }
 }
@@ -66,17 +66,17 @@ mod tests {
     fn test_count() {
         let mut t = MerkleSearchTree::default();
 
-        t.upsert("I", &"bananas");
-        t.upsert("K", &"bananas");
-        t.upsert("A", &"bananas");
-        t.upsert("E", &"bananas");
-        t.upsert("J", &"bananas");
-        t.upsert("B", &"bananas");
-        t.upsert("C", &"bananas");
-        t.upsert("D", &"bananas");
-        t.upsert("F", &"bananas");
-        t.upsert("G", &"bananas");
-        t.upsert("H", &"bananas");
+        t.upsert(&"I", &"bananas");
+        t.upsert(&"K", &"bananas");
+        t.upsert(&"A", &"bananas");
+        t.upsert(&"E", &"bananas");
+        t.upsert(&"J", &"bananas");
+        t.upsert(&"B", &"bananas");
+        t.upsert(&"C", &"bananas");
+        t.upsert(&"D", &"bananas");
+        t.upsert(&"F", &"bananas");
+        t.upsert(&"G", &"bananas");
+        t.upsert(&"H", &"bananas");
 
         let mut counter = InvariantAssertCount::new(NopVisitor::default());
         t.pre_order_traversal(&mut counter);

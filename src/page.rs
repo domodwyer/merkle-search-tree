@@ -3,14 +3,14 @@ use std::{cmp::Ordering, hash::Hasher, ops::DerefMut};
 use siphasher::sip128::{Hasher128, SipHasher24};
 
 use crate::{
-    digest::{Digest, KeyDigest, PageDigest, ValueDigest},
+    digest::{Digest, PageDigest, ValueDigest},
     node::Node,
     visitor::Visitor,
 };
 
 /// A group of [`Node`] instances of the same level.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Page<const N: usize> {
+pub struct Page<const N: usize, K> {
     level: u8,
 
     /// The cached hash in this page; the cumulation of the hashes of the
@@ -18,14 +18,14 @@ pub struct Page<const N: usize> {
     tree_hash: Option<PageDigest>,
 
     /// A vector of nodes in this page, ordered min to max by key.
-    nodes: Vec<Node<N>>,
+    nodes: Vec<Node<N, K>>,
 
     /// The page for keys greater-than all keys in nodes.
-    high_page: Option<Box<Page<N>>>,
+    high_page: Option<Box<Page<N, K>>>,
 }
 
-impl<const N: usize> Page<N> {
-    pub(super) const fn new(level: u8, nodes: Vec<Node<N>>) -> Self {
+impl<const N: usize, K> Page<N, K> {
+    pub(super) const fn new(level: u8, nodes: Vec<Node<N, K>>) -> Self {
         Self {
             level,
             tree_hash: None,
@@ -35,7 +35,7 @@ impl<const N: usize> Page<N> {
     }
 
     /// Returns the the [`Node`] in this page.
-    pub fn nodes(&self) -> &[Node<N>] {
+    pub fn nodes(&self) -> &[Node<N, K>] {
         &self.nodes
     }
 
@@ -49,48 +49,6 @@ impl<const N: usize> Page<N> {
     /// sub-tree rooted at `self`.
     pub fn hash(&self) -> Option<&PageDigest> {
         self.tree_hash.as_ref()
-    }
-
-    /// Generate the page hash and cache the value, covering the nodes and the
-    /// sub-tree rooted at `self`.
-    pub fn maybe_generate_hash(&mut self, hasher: &SipHasher24) {
-        if self.tree_hash.is_some() {
-            return;
-        }
-
-        let mut h = *hasher;
-
-        // NOTE: changing the ordering of the hashed elements is a breaking
-        // change.
-        //
-        // This order may be changed if releasing a new major version.
-        //
-        // TODO(dom:test): fixture
-
-        // Hash all nodes & their child pages
-        for n in &mut self.nodes {
-            // Hash the lt child page of this node, if any
-            if let Some(child_hash) = n.lt_pointer_mut().as_deref_mut().map(|v| {
-                v.maybe_generate_hash(hasher);
-                v.hash().unwrap()
-            }) {
-                h.write(child_hash.as_ref());
-            }
-
-            // Hash the node value itself
-            h.write(n.key_hash().as_ref());
-            h.write(n.value_hash().as_ref());
-        }
-
-        // Hash the high page, if any
-        if let Some(high_hash) = self.high_page.as_deref_mut().map(|v| {
-            v.maybe_generate_hash(hasher);
-            v.hash().unwrap()
-        }) {
-            h.write(high_hash.as_ref());
-        }
-
-        self.tree_hash = Some(PageDigest::new(Digest::new(h.finish128().as_bytes())));
     }
 
     pub(crate) fn insert_high_page(&mut self, p: Box<Self>) {
@@ -113,7 +71,7 @@ impl<const N: usize> Page<N> {
     /// high page pointer.
     pub(crate) fn pre_order_traversal<T>(&self, visitor: &mut T, high_page: bool) -> bool
     where
-        T: Visitor<N>,
+        T: Visitor<N, K>,
     {
         if !visitor.visit_page(self, high_page) {
             return false;
@@ -143,8 +101,8 @@ impl<const N: usize> Page<N> {
     /// # Panics
     ///
     /// Panics if there are no nodes in this page.
-    pub(crate) fn min_key(&self) -> &KeyDigest<N> {
-        self.nodes.first().unwrap().key_hash()
+    pub(crate) fn min_key(&self) -> &K {
+        self.nodes.first().unwrap().key()
     }
 
     /// Return the maximum key stored in this page.
@@ -152,19 +110,69 @@ impl<const N: usize> Page<N> {
     /// # Panics
     ///
     /// Panics if there are no nodes in this page.
-    pub(crate) fn max_key(&self) -> &KeyDigest<N> {
-        self.nodes.last().unwrap().key_hash()
+    pub(crate) fn max_key(&self) -> &K {
+        self.nodes.last().unwrap().key()
     }
 }
 
-impl<const N: usize> Page<N> {
+impl<const N: usize, K> Page<N, K>
+where
+    K: AsRef<[u8]>,
+{
+    /// Generate the page hash and cache the value, covering the nodes and the
+    /// sub-tree rooted at `self`.
+    pub fn maybe_generate_hash(&mut self, hasher: &SipHasher24) {
+        if self.tree_hash.is_some() {
+            return;
+        }
+
+        let mut h = *hasher;
+
+        // NOTE: changing the ordering of the hashed elements is a breaking
+        // change.
+        //
+        // This order may be changed if releasing a new major version.
+        //
+        // TODO(dom:test): fixture
+
+        // Hash all nodes & their child pages
+        for n in &mut self.nodes {
+            // Hash the lt child page of this node, if any
+            if let Some(child_hash) = n.lt_pointer_mut().as_deref_mut().map(|v| {
+                v.maybe_generate_hash(hasher);
+                v.hash().unwrap()
+            }) {
+                h.write(child_hash.as_ref());
+            }
+
+            // Hash the node value itself
+            h.write(n.key().as_ref());
+            h.write(n.value_hash().as_ref());
+        }
+
+        // Hash the high page, if any
+        if let Some(high_hash) = self.high_page.as_deref_mut().map(|v| {
+            v.maybe_generate_hash(hasher);
+            v.hash().unwrap()
+        }) {
+            h.write(high_hash.as_ref());
+        }
+
+        self.tree_hash = Some(PageDigest::new(Digest::new(h.finish128().as_bytes())));
+    }
+}
+
+impl<const N: usize, K> Page<N, K>
+where
+    K: PartialOrd + Clone,
+{
     /// Insert or update the value hash of `key`, setting it to `value`, found
     /// at tree `level`.
     ///
     /// Returns true if the key was found, or false otherwise.
     ///
     /// If the key is found/modified, the cached page hash is invalidated.
-    pub(crate) fn upsert(&mut self, key: &KeyDigest<N>, level: u8, value: ValueDigest<N>) -> bool {
+    pub(crate) fn upsert(&mut self, key: &K, level: u8, value: ValueDigest<N>) -> bool {
         match level.cmp(&self.level) {
             // Level is less than this page's level - descend down the tree.
             Ordering::Less => {
@@ -182,11 +190,11 @@ impl<const N: usize> Page<N> {
                 // into.
                 //
                 // Otherwise insert this node into the high page.
-                let ptr = self.nodes.partition_point(|v| *key > *v.key_hash());
+                let ptr = self.nodes.partition_point(|v| *key > *v.key());
 
                 let page = match self.nodes.get_mut(ptr) {
                     Some(v) => {
-                        debug_assert!(v.key_hash() > key);
+                        debug_assert!(v.key() > key);
                         v.lt_pointer_mut()
                     }
                     None => &mut self.high_page,
@@ -218,9 +226,9 @@ impl<const N: usize> Page<N> {
     }
 
     /// Insert a node into this page, splitting any child pages as necessary.
-    pub(crate) fn upsert_node(&mut self, key: &KeyDigest<N>, value: ValueDigest<N>) {
+    pub(crate) fn upsert_node(&mut self, key: &K, value: ValueDigest<N>) {
         // Find the appropriate child pointer to follow.
-        let idx = self.nodes.partition_point(|v| *key > *v.key_hash());
+        let idx = self.nodes.partition_point(|v| *key > *v.key());
 
         // At this point the new key should be inserted has been identified -
         // node_idx points to the first node greater-than-or-equal to key.
@@ -255,8 +263,8 @@ impl<const N: usize> Page<N> {
         // relevant nodes that must be split.
 
         let page_to_split = match self.nodes.get_mut(idx) {
-            Some(n) if *n.key_hash() == *key => {
-                n.update_hash(value);
+            Some(n) if *n.key() == *key => {
+                n.update_value_hash(value);
                 return;
             }
             Some(n) => n.lt_pointer_mut(),
@@ -300,16 +308,17 @@ impl<const N: usize> Page<N> {
 ///
 /// This method panics if attempting to split a non-empty page (root pages are
 /// never split).
-fn split_off_lt<const N: usize, T>(page: &mut Option<T>, key: &KeyDigest<N>) -> Option<Page<N>>
+fn split_off_lt<const N: usize, T, K>(page: &mut Option<T>, key: &K) -> Option<Page<N, K>>
 where
-    T: DerefMut<Target = Page<N>>,
+    K: PartialOrd,
+    T: DerefMut<Target = Page<N, K>>,
 {
     let mut page_ref = page.as_deref_mut()?;
     debug_assert!(!page_ref.nodes.is_empty());
 
     // A page should be split into two parts - one page containing the elements
     // less-than "key", and one containing parts greater-or-equal to "key".
-    let partition_idx = page_ref.nodes.partition_point(|v| key > v.key_hash());
+    let partition_idx = page_ref.nodes.partition_point(|v| key > v.key());
 
     // All the nodes are greater-than-or-equal-to "key" - there's no less-than
     // nodes to return.
@@ -399,13 +408,14 @@ where
     Some(lt_page)
 }
 
-pub(crate) fn insert_intermediate_page<const N: usize, T>(
+pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
     child_page: &mut T,
-    key: KeyDigest<N>,
+    key: K,
     level: u8,
     value: ValueDigest<N>,
 ) where
-    T: DerefMut<Target = Page<N>>,
+    K: PartialOrd + Clone,
+    T: DerefMut<Target = Page<N, K>>,
 {
     // Terminology:
     //
@@ -564,24 +574,20 @@ mod tests {
     #[test]
     #[should_panic(expected = "!page_ref.nodes.is_empty()")]
     fn test_split_page_empty() {
-        let mut gte_page = Some(Box::new(Page::<1>::new(42, vec![])));
-        let _lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([5])));
+        let mut gte_page = Some(Box::new(Page::<1, _>::new(42, vec![])));
+        let _lt_page = split_off_lt(&mut gte_page, &5);
     }
 
     #[test]
     fn test_split_page_single_node_lt() {
         let mut gte_page = Some(Box::new(Page::new(
             42,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([2])),
-                MOCK_VALUE,
-                None,
-            )],
+            vec![Node::new(2, MOCK_VALUE, None)],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([5])));
+        let lt_page = split_off_lt(&mut gte_page, &5);
         assert_matches!(gte_page, None);
 
         assert_matches!(lt_page, Some(p) => {
@@ -591,7 +597,7 @@ mod tests {
             assert_eq!(p.tree_hash, Some(MOCK_PAGE_HASH));
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
             ]);
         });
     }
@@ -600,16 +606,12 @@ mod tests {
     fn test_split_page_single_node_gt() {
         let mut gte_page = Some(Box::new(Page::new(
             42,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([2])),
-                MOCK_VALUE,
-                None,
-            )],
+            vec![Node::new(2, MOCK_VALUE, None)],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([1])));
+        let lt_page = split_off_lt(&mut gte_page, &1);
         assert_matches!(gte_page, Some(p) => {
             assert_eq!(p.level, 42);
 
@@ -617,7 +619,7 @@ mod tests {
             assert_eq!(p.tree_hash, Some(MOCK_PAGE_HASH));
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
             ]);
         });
 
@@ -629,22 +631,22 @@ mod tests {
         let mut gte_page = Some(Box::new(Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([2])));
+        let lt_page = split_off_lt(&mut gte_page, &2);
         assert_matches!(gte_page, Some(p) => {
             assert_eq!(p.level, 42);
             assert_eq!(p.tree_hash, None);
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None)
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None)
             ]);
         });
 
@@ -655,7 +657,7 @@ mod tests {
             assert_eq!(p.tree_hash, None);
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
             ]);
         });
     }
@@ -665,21 +667,21 @@ mod tests {
         let mut gte_page = Some(Box::new(Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([3])));
+        let lt_page = split_off_lt(&mut gte_page, &3);
         assert_matches!(gte_page, Some(p) => {
             assert_eq!(p.level, 42);
             assert_eq!(p.tree_hash, None);
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None)
+                Node::new(4, MOCK_VALUE, None)
             ]);
         });
 
@@ -690,8 +692,8 @@ mod tests {
             assert_eq!(p.tree_hash, None);
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
             ]);
         });
     }
@@ -701,15 +703,15 @@ mod tests {
         let mut gte_page = Some(Box::new(Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([0])));
+        let lt_page = split_off_lt(&mut gte_page, &0);
         assert_matches!(gte_page, Some(p) => {
             assert_eq!(p.level, 42);
 
@@ -718,9 +720,9 @@ mod tests {
             assert_eq!(p.tree_hash, Some(MOCK_PAGE_HASH));
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ]);
         });
 
@@ -732,15 +734,15 @@ mod tests {
         let mut gte_page = Some(Box::new(Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ],
         )));
 
         gte_page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
 
-        let lt_page = split_off_lt(&mut gte_page, &KeyDigest::new(Digest::new([10])));
+        let lt_page = split_off_lt(&mut gte_page, &10);
         assert_matches!(gte_page, None);
 
         assert_matches!(lt_page, Some(p) => {
@@ -750,99 +752,67 @@ mod tests {
             assert_eq!(p.tree_hash, Some(MOCK_PAGE_HASH));
 
             assert_eq!(p.nodes, [
-                Node::new(KeyDigest::new(Digest::new([1])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([2])), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(Digest::new([4])), MOCK_VALUE, None),
+                Node::new(1, MOCK_VALUE, None),
+                Node::new(2, MOCK_VALUE, None),
+                Node::new(4, MOCK_VALUE, None),
             ]);
         });
     }
 
     #[test]
     fn test_upsert_less_than_split_child() {
-        let mut p = Page::new(
-            1,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([4])),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let mut p = Page::new(1, vec![Node::new(4, MOCK_VALUE, None)]);
 
-        p.upsert(&KeyDigest::new(Digest::new([3])), 0, MOCK_VALUE);
-        p.upsert(&KeyDigest::new(Digest::new([1])), 0, MOCK_VALUE);
-        p.upsert(&KeyDigest::new(Digest::new([2])), 1, MOCK_VALUE);
+        p.upsert(&3, 0, MOCK_VALUE);
+        p.upsert(&1, 0, MOCK_VALUE);
+        p.upsert(&2, 1, MOCK_VALUE);
 
         assert_tree!(page = p);
     }
 
     #[test]
     fn test_split_page_recursive_lt_pointer() {
-        let mut lt_pointer_page = Page::new(
-            52,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([86])),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let mut lt_pointer_page = Page::new(52, vec![Node::new(86, MOCK_VALUE, None)]);
         lt_pointer_page.tree_hash = Some(MOCK_PAGE_HASH);
 
         let mut root = Box::new(Page::new(
             42,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([161])),
-                MOCK_VALUE,
-                Some(Box::new(lt_pointer_page)),
-            )],
+            vec![Node::new(161, MOCK_VALUE, Some(Box::new(lt_pointer_page)))],
         ));
         root.tree_hash = Some(MOCK_PAGE_HASH);
 
-        let key = KeyDigest::new(Digest::new([160]));
+        let key = 160;
 
         let mut root = Some(root);
         let lt_page = split_off_lt(&mut root, &key);
 
         assert_matches!(lt_page, Some(p) => {
             assert_eq!(p.level, 52);
-            assert_matches!(p.nodes(), [n] if *n.key_hash() == KeyDigest::new(Digest::new([86])))
+            assert_matches!(p.nodes(), [n] if *n.key() == 86)
         });
     }
 
     #[test]
     fn test_split_page_recursive_high_page() {
-        let mut high_page = Page::new(
-            32,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([44])),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let mut high_page = Page::new(32, vec![Node::new(44, MOCK_VALUE, None)]);
         high_page.tree_hash = Some(MOCK_PAGE_HASH);
 
-        let mut root = Box::new(Page::new(
-            42,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([42])),
-                MOCK_VALUE,
-                None,
-            )],
-        ));
+        let mut root = Box::new(Page::new(42, vec![Node::new(42, MOCK_VALUE, None)]));
         root.tree_hash = Some(MOCK_PAGE_HASH);
         root.insert_high_page(Box::new(high_page));
 
-        let key = KeyDigest::new(Digest::new([43]));
+        let key = 43;
 
         let mut root = Some(root);
         let lt_page = split_off_lt(&mut root, &key);
 
         assert_matches!(lt_page, Some(p) => {
             assert_eq!(p.level, 42);
-            assert_matches!(p.nodes(), [n] if *n.key_hash() == KeyDigest::new(Digest::new([42])))
+            assert_matches!(p.nodes(), [n] if *n.key() == 42)
         });
         assert_matches!(root, Some(p) => {
             assert_eq!(p.level, 32);
-            assert_matches!(p.nodes(), [n] if *n.key_hash() == KeyDigest::new(Digest::new([44])))
+            assert_matches!(p.nodes(), [n] if *n.key() == 44)
         });
     }
 }

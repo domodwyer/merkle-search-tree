@@ -44,15 +44,6 @@ impl<T> LevelKey<T> {
 #[derive(Debug, Default)]
 pub struct MockHasher;
 
-impl MockHasher {
-    pub fn hash<T>(t: &T) -> Digest<32>
-    where
-        Self: Hasher<32, T>,
-    {
-        <Self as Hasher<32, T>>::hash(&Self::default(), t)
-    }
-}
-
 impl<T> Hasher<32, LevelKey<T>> for MockHasher
 where
     T: Display,

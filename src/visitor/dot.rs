@@ -4,7 +4,7 @@
 //! [`MerkleSearchTree`]: crate::MerkleSearchTree
 //! [Graphviz]: https://graphviz.org/
 
-use std::fmt::Write;
+use std::fmt::{Display, Write};
 
 use crate::{node::Node, page::Page};
 
@@ -46,8 +46,11 @@ impl Default for DotVisitor {
     }
 }
 
-impl<const N: usize> Visitor<N> for DotVisitor {
-    fn visit_page(&mut self, page: &Page<N>, high_page: bool) -> bool {
+impl<const N: usize, K> Visitor<N, K> for DotVisitor
+where
+    K: Display,
+{
+    fn visit_page(&mut self, page: &Page<N, K>, high_page: bool) -> bool {
         let mut buf = String::new();
 
         self.page_count += 1;
@@ -89,7 +92,7 @@ impl<const N: usize> Visitor<N> for DotVisitor {
         true
     }
 
-    fn post_visit_page(&mut self, page: &Page<N>) -> bool {
+    fn post_visit_page(&mut self, page: &Page<N, K>) -> bool {
         let mut buf = self.page_bufs.pop().unwrap();
 
         // Remove the trailing | from the node field
@@ -123,7 +126,7 @@ impl<const N: usize> Visitor<N> for DotVisitor {
         true
     }
 
-    fn pre_visit_node(&mut self, node: &Node<N>) -> bool {
+    fn pre_visit_node(&mut self, node: &Node<N, K>) -> bool {
         // Find the ID of the last visited page, which will be the parent of
         // this node.
         let page_id = self
@@ -137,24 +140,24 @@ impl<const N: usize> Visitor<N> for DotVisitor {
             .next()
             .unwrap();
 
-        let name = clean_name(node.key_hash());
+        let name = clean_name(node.key());
         self.link_stack
             .push(Parent::Node(format!("page_{}:{}", page_id, &name)));
 
         true
     }
 
-    fn visit_node(&mut self, node: &Node<N>) -> bool {
+    fn visit_node(&mut self, node: &Node<N, K>) -> bool {
         let buf = self.page_bufs.last_mut().unwrap();
 
         // Add this node to the page record
-        let name = clean_name(node.key_hash());
+        let name = clean_name(node.key());
         write!(buf, "<{}>·|{}|", &name, name).unwrap();
 
         true
     }
 
-    fn post_visit_node(&mut self, _node: &Node<N>) -> bool {
+    fn post_visit_node(&mut self, _node: &Node<N, K>) -> bool {
         self.link_stack.pop();
         true
     }
@@ -174,7 +177,7 @@ fn clean_name<'a, T: 'a>(name: T) -> String
 where
     T: std::fmt::Display,
 {
-    format!("{}", name)
+    name.to_string()
         .chars()
         .map(|v| match v {
             'a'..='z' | 'A'..='Z' | '0'..='9' | '.' | '_' => v,
@@ -189,7 +192,7 @@ mod tests {
         assert_tree,
         digest::{
             mock::{LevelKey, MockHasher},
-            Digest, KeyDigest, ValueDigest,
+            Digest, ValueDigest,
         },
         MerkleSearchTree,
     };
@@ -203,8 +206,8 @@ mod tests {
         let p = Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(MockHasher::hash(&"k1")), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(MockHasher::hash(&"k2")), MOCK_VALUE, None),
+                Node::new(&"k1", MOCK_VALUE, None),
+                Node::new(&"k2", MOCK_VALUE, None),
             ],
         );
 
@@ -213,20 +216,13 @@ mod tests {
 
     #[test]
     fn test_dot_high_page() {
-        let h = Page::new(
-            0,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"z_high1")),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let h = Page::new(0, vec![Node::new(&"z_high1", MOCK_VALUE, None)]);
 
         let mut p = Page::new(
             42,
             vec![
-                Node::new(KeyDigest::new(MockHasher::hash(&"k1")), MOCK_VALUE, None),
-                Node::new(KeyDigest::new(MockHasher::hash(&"k2")), MOCK_VALUE, None),
+                Node::new(&"k1", MOCK_VALUE, None),
+                Node::new(&"k2", MOCK_VALUE, None),
             ],
         );
         p.insert_high_page(Box::new(h));
@@ -236,32 +232,17 @@ mod tests {
 
     #[test]
     fn test_dot_lt_pointer() {
-        let lt_page_1 = Page::new(
-            1,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"lt1")),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let lt_page_1 = Page::new(1, vec![Node::new(&"lt1", MOCK_VALUE, None)]);
         let lt_page_2 = Page::new(
             2,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"lt2")),
-                MOCK_VALUE,
-                Some(Box::new(lt_page_1)),
-            )],
+            vec![Node::new(&"lt2", MOCK_VALUE, Some(Box::new(lt_page_1)))],
         );
 
         let p = Page::new(
             42,
             vec![
-                Node::new(
-                    KeyDigest::new(MockHasher::hash(&"z_k1")),
-                    MOCK_VALUE,
-                    Some(Box::new(lt_page_2)),
-                ),
-                Node::new(KeyDigest::new(MockHasher::hash(&"z_k2")), MOCK_VALUE, None),
+                Node::new(&"z_k1", MOCK_VALUE, Some(Box::new(lt_page_2))),
+                Node::new(&"z_k2", MOCK_VALUE, None),
             ],
         );
 
@@ -270,49 +251,20 @@ mod tests {
 
     #[test]
     fn test_dot_high_page_lt_pointer() {
-        let lt_page_1 = Page::new(
-            10,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"lt1")),
-                MOCK_VALUE,
-                None,
-            )],
-        );
+        let lt_page_1 = Page::new(10, vec![Node::new(&"lt1", MOCK_VALUE, None)]);
         let lt_page_2 = Page::new(
             11,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"lt2")),
-                MOCK_VALUE,
-                Some(Box::new(lt_page_1)),
-            )],
+            vec![Node::new(&"lt2", MOCK_VALUE, Some(Box::new(lt_page_1)))],
         );
 
-        let h1 = Page::new(
-            0,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"zz_h1")),
-                MOCK_VALUE,
-                None,
-            )],
-        );
-        let h2 = Page::new(
-            1,
-            vec![Node::new(
-                KeyDigest::new(MockHasher::hash(&"zz_h2")),
-                MOCK_VALUE,
-                Some(Box::new(h1)),
-            )],
-        );
+        let h1 = Page::new(0, vec![Node::new(&"zz_h1", MOCK_VALUE, None)]);
+        let h2 = Page::new(1, vec![Node::new(&"zz_h2", MOCK_VALUE, Some(Box::new(h1)))]);
 
         let mut p = Page::new(
             42,
             vec![
-                Node::new(
-                    KeyDigest::new(MockHasher::hash(&"z_k1")),
-                    MOCK_VALUE,
-                    Some(Box::new(lt_page_2)),
-                ),
-                Node::new(KeyDigest::new(MockHasher::hash(&"z_k2")), MOCK_VALUE, None),
+                Node::new(&"z_k1", MOCK_VALUE, Some(Box::new(lt_page_2))),
+                Node::new(&"z_k2", MOCK_VALUE, None),
             ],
         );
         p.insert_high_page(Box::new(h2));
@@ -324,18 +276,11 @@ mod tests {
     fn test_parent_lookup() {
         const MOCK_VALUE_1: ValueDigest<1> = ValueDigest::new(Digest::new([0; 1]));
 
-        let mut p = Page::new(
-            1,
-            vec![Node::new(
-                KeyDigest::new(Digest::new([4])),
-                MOCK_VALUE_1,
-                None,
-            )],
-        );
+        let mut p = Page::new(1, vec![Node::new(4, MOCK_VALUE_1, None)]);
 
-        p.upsert(&KeyDigest::new(Digest::new([3])), 0, MOCK_VALUE_1);
-        p.upsert(&KeyDigest::new(Digest::new([1])), 0, MOCK_VALUE_1);
-        p.upsert(&KeyDigest::new(Digest::new([2])), 1, MOCK_VALUE_1);
+        p.upsert(&3, 0, MOCK_VALUE_1);
+        p.upsert(&1, 0, MOCK_VALUE_1);
+        p.upsert(&2, 1, MOCK_VALUE_1);
 
         assert_tree!(page = p);
     }
@@ -344,9 +289,9 @@ mod tests {
     fn test_linear_children() {
         let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
-        t.upsert(LevelKey::new("I", 2), &"bananas");
-        t.upsert(LevelKey::new("E", 1), &"bananas");
-        t.upsert(LevelKey::new("F", 0), &"bananas");
+        t.upsert(&LevelKey::new("I", 2), &"bananas");
+        t.upsert(&LevelKey::new("E", 1), &"bananas");
+        t.upsert(&LevelKey::new("F", 0), &"bananas");
 
         assert_tree!(t);
     }
