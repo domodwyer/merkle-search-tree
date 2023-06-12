@@ -43,14 +43,3 @@ pub mod visitor;
 pub use node::*;
 pub use page::*;
 pub use tree::*;
-
-// TODO(dom:doc): requires deterministic hashing across all peers
-// TODO(dom:doc): default hash portability
-// TODO(dom:doc): deterministic hashes for same crate minor versions
-// TODO(dom:doc): supports differing hash fns for key & value
-// TODO(dom:doc): internal page hashing uses siphash
-
-// TODO(dom:test): prop root hash consistent
-// TODO(dom:test): prop all pages have cached value after revalidate
-// TODO(dom:test): prop root hash invalidated after modify
-// TODO(dom:test): prop root hash consistent after modify
