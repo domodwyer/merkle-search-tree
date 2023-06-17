@@ -9,45 +9,23 @@ jobs:
         feature_flags: ["no-default-features", "all-features"]
     runs-on: ubuntu-latest
     steps:
+    
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-        override: true
 
     - name: fmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run: cargo fmt --all -- --check
 
     - name: build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --${{matrix.feature_flags}} --verbose
+      run: cargo build --${{matrix.feature_flags}} --verbose
 
     - name: test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --${{matrix.feature_flags}} --lib --examples --tests --verbose
+      run: cargo test --${{matrix.feature_flags}} --lib --examples --tests --verbose
 
     - name: build benchmarks
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --${{matrix.feature_flags}} --benches --no-run --verbose
+      run: cargo test --${{matrix.feature_flags}} --benches --no-run --verbose
 
     - name: clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --${{matrix.feature_flags}}
+      run: cargo clippy --${{matrix.feature_flags}}
 
     - name: docs
-      uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --${{matrix.feature_flags}} --document-private-items --no-deps
+      run: cargo doc --${{matrix.feature_flags}} --document-private-items --no-deps
