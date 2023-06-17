@@ -4,47 +4,28 @@ on: [push, pull_request]
 
 jobs:
   test:
+    strategy:
+      matrix:
+        feature_flags: ["no-default-features", "all-features"]
     runs-on: ubuntu-latest
     steps:
+    
     - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-        override: true
 
     - name: fmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run: cargo fmt --all -- --check
 
     - name: build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --verbose
+      run: cargo build --${{matrix.feature_flags}} --verbose
 
     - name: test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --all-features --lib --examples --tests --verbose
+      run: cargo test --${{matrix.feature_flags}} --lib --examples --tests --verbose
 
     - name: build benchmarks
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --benches --no-run --verbose
+      run: cargo test --${{matrix.feature_flags}} --benches --no-run --verbose
 
     - name: clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-features
+      run: cargo clippy --${{matrix.feature_flags}}
 
     - name: docs
-      uses: actions-rs/cargo@v1
-      with:
-        command: doc
-        args: --document-private-items --no-deps
+      run: cargo doc --${{matrix.feature_flags}} --document-private-items --no-deps

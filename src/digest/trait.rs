@@ -50,6 +50,15 @@ impl<const N: usize> AsRef<[u8]> for Digest<N> {
     }
 }
 
+#[cfg(feature = "digest_base64")]
+impl<const N: usize> std::fmt::Display for Digest<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use base64::{display::Base64Display, engine::general_purpose::STANDARD};
+
+        Base64Display::new(&self.0, &STANDARD).fmt(f)
+    }
+}
+
 /// Extract the number of leading 0's when expressed as base 16 digits, defining
 /// the tree level the hash should reside at.
 pub(crate) fn level<const N: usize>(v: &Digest<N>) -> u8 {
