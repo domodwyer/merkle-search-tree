@@ -46,11 +46,11 @@ impl Default for DotVisitor {
     }
 }
 
-impl<const N: usize, K> Visitor<N, K> for DotVisitor
+impl<'a, const N: usize, K> Visitor<'a, N, K> for DotVisitor
 where
     K: Display,
 {
-    fn visit_page(&mut self, page: &Page<N, K>, high_page: bool) -> bool {
+    fn visit_page(&mut self, page: &'a Page<N, K>, high_page: bool) -> bool {
         let mut buf = String::new();
 
         self.page_count += 1;
@@ -92,7 +92,7 @@ where
         true
     }
 
-    fn post_visit_page(&mut self, page: &Page<N, K>) -> bool {
+    fn post_visit_page(&mut self, page: &'a Page<N, K>) -> bool {
         let mut buf = self.page_bufs.pop().unwrap();
 
         // Remove the trailing | from the node field
@@ -126,7 +126,7 @@ where
         true
     }
 
-    fn pre_visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn pre_visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         // Find the ID of the last visited page, which will be the parent of
         // this node.
         let page_id = self
@@ -147,7 +147,7 @@ where
         true
     }
 
-    fn visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         let buf = self.page_bufs.last_mut().unwrap();
 
         // Add this node to the page record
@@ -157,7 +157,7 @@ where
         true
     }
 
-    fn post_visit_node(&mut self, _node: &Node<N, K>) -> bool {
+    fn post_visit_node(&mut self, _node: &'a Node<N, K>) -> bool {
         self.link_stack.pop();
         true
     }

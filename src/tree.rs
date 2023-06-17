@@ -206,9 +206,9 @@ where
     /// [`Node`] to `visitor`.
     ///
     /// A pre-order traversal yields nodes in key order, from min to max.
-    pub fn pre_order_traversal<T>(&self, visitor: &mut T)
+    pub fn pre_order_traversal<'a, T>(&'a self, visitor: &mut T)
     where
-        T: Visitor<N, K>,
+        T: Visitor<'a, N, K>,
     {
         self.root.pre_order_traversal(visitor, false);
     }

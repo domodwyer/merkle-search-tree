@@ -27,9 +27,9 @@ impl<const N: usize, K> Node<N, K> {
         }
     }
 
-    pub(crate) fn depth_first<T>(&self, visitor: &mut T) -> bool
+    pub(crate) fn depth_first<'a, T>(&'a self, visitor: &mut T) -> bool
     where
-        T: Visitor<N, K>,
+        T: Visitor<'a, N, K>,
     {
         if !visitor.pre_visit_node(self) {
             return false;

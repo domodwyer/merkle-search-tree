@@ -29,30 +29,30 @@ impl<T> InvariantAssertCount<T> {
     }
 }
 
-impl<const N: usize, T, K> Visitor<N, K> for InvariantAssertCount<T>
+impl<'a, const N: usize, T, K> Visitor<'a, N, K> for InvariantAssertCount<T>
 where
-    T: Visitor<N, K>,
+    T: Visitor<'a, N, K>,
 {
     #[track_caller]
-    fn visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         self.count += 1;
         self.inner.visit_node(node)
     }
 
-    fn post_visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn pre_visit_node(&mut self, node: &'a Node<N, K>) -> bool {
+        self.inner.pre_visit_node(node)
+    }
+
+    fn post_visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         self.inner.post_visit_node(node)
     }
 
-    fn visit_page(&mut self, page: &Page<N, K>, high_page: bool) -> bool {
+    fn visit_page(&mut self, page: &'a Page<N, K>, high_page: bool) -> bool {
         self.inner.visit_page(page, high_page)
     }
 
-    fn post_visit_page(&mut self, page: &Page<N, K>) -> bool {
+    fn post_visit_page(&mut self, page: &'a Page<N, K>) -> bool {
         self.inner.post_visit_page(page)
-    }
-
-    fn pre_visit_node(&mut self, node: &Node<N, K>) -> bool {
-        self.inner.pre_visit_node(node)
     }
 }
 

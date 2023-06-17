@@ -69,9 +69,9 @@ impl<const N: usize, K> Page<N, K> {
     ///
     /// If `high_page` is true, this page was linked to from the parent via a
     /// high page pointer.
-    pub(crate) fn pre_order_traversal<T>(&self, visitor: &mut T, high_page: bool) -> bool
+    pub(crate) fn pre_order_traversal<'a, T>(&'a self, visitor: &mut T, high_page: bool) -> bool
     where
-        T: Visitor<N, K>,
+        T: Visitor<'a, N, K>,
     {
         if !visitor.visit_page(self, high_page) {
             return false;

@@ -14,14 +14,14 @@ use super::Visitor;
 ///   * High pages are never empty
 ///
 #[derive(Debug)]
-pub(crate) struct InvariantAssertOrder<const N: usize, T, K> {
+pub(crate) struct InvariantAssertOrder<'a, const N: usize, T, K> {
     inner: T,
-    last: Option<K>,
+    last: Option<&'a K>,
 
     level_stack: Vec<u8>,
 }
 
-impl<const N: usize, T, K> InvariantAssertOrder<N, T, K> {
+impl<'a, const N: usize, T, K> InvariantAssertOrder<'a, N, T, K> {
     /// Wrap `T` in this decorator.
     pub(crate) fn new(inner: T) -> Self {
         Self {
@@ -37,17 +37,17 @@ impl<const N: usize, T, K> InvariantAssertOrder<N, T, K> {
     }
 }
 
-impl<const N: usize, T, K> Visitor<N, K> for InvariantAssertOrder<N, T, K>
+impl<'a, const N: usize, T, K> Visitor<'a, N, K> for InvariantAssertOrder<'a, N, T, K>
 where
-    K: PartialOrd + Debug + Clone,
-    T: Visitor<N, K>,
+    K: PartialOrd + Debug,
+    T: Visitor<'a, N, K>,
 {
-    fn pre_visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn pre_visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         self.inner.pre_visit_node(node)
     }
 
-    fn visit_node(&mut self, node: &Node<N, K>) -> bool {
-        if let Some(v) = &self.last {
+    fn visit_node(&mut self, node: &'a Node<N, K>) -> bool {
+        if let Some(v) = self.last {
             assert!(
                 v < node.key(),
                 "visited key {:?} before key {:?}",
@@ -56,16 +56,16 @@ where
             )
         }
 
-        self.last = Some(node.key().clone());
+        self.last = Some(node.key());
 
         self.inner.visit_node(node)
     }
 
-    fn post_visit_node(&mut self, node: &Node<N, K>) -> bool {
+    fn post_visit_node(&mut self, node: &'a Node<N, K>) -> bool {
         self.inner.post_visit_node(node)
     }
 
-    fn visit_page(&mut self, page: &Page<N, K>, high_page: bool) -> bool {
+    fn visit_page(&mut self, page: &'a Page<N, K>, high_page: bool) -> bool {
         // Page levels always increase as the visitor travels up the tree (for a
         // depth first search)
         assert!(self
@@ -84,7 +84,7 @@ where
         self.inner.visit_page(page, high_page)
     }
 
-    fn post_visit_page(&mut self, page: &Page<N, K>) -> bool {
+    fn post_visit_page(&mut self, page: &'a Page<N, K>) -> bool {
         self.level_stack.pop();
         self.inner.post_visit_page(page)
     }

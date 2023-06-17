@@ -6,24 +6,24 @@ use super::Visitor;
 #[derive(Debug, Default)]
 pub(crate) struct NopVisitor;
 
-impl<const N: usize, K> Visitor<N, K> for NopVisitor {
-    fn post_visit_node(&mut self, _node: &Node<N, K>) -> bool {
+impl<'a, const N: usize, K> Visitor<'a, N, K> for NopVisitor {
+    fn post_visit_node(&mut self, _node: &'a Node<N, K>) -> bool {
         true
     }
 
-    fn visit_page(&mut self, _page: &Page<N, K>, _high_page: bool) -> bool {
+    fn visit_page(&mut self, _page: &'a Page<N, K>, _high_page: bool) -> bool {
         true
     }
 
-    fn post_visit_page(&mut self, _page: &Page<N, K>) -> bool {
+    fn post_visit_page(&mut self, _page: &'a Page<N, K>) -> bool {
         true
     }
 
-    fn pre_visit_node(&mut self, _node: &Node<N, K>) -> bool {
+    fn pre_visit_node(&mut self, _node: &'a Node<N, K>) -> bool {
         true
     }
 
-    fn visit_node(&mut self, _node: &Node<N, K>) -> bool {
+    fn visit_node(&mut self, _node: &'a Node<N, K>) -> bool {
         true
     }
 }
