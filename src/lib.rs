@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![deny(rustdoc::broken_intra_doc_links, rust_2018_idioms)]
+#![allow(clippy::default_constructed_unit_structs)]
 #![warn(
     clippy::clone_on_ref_ptr,
     clippy::dbg_macro,

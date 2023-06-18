@@ -614,7 +614,7 @@ mod tests {
             let mut want_len = 0;
 
             for key in keys {
-                if !unique.insert(key) {
+                if unique.insert(key) {
                     want_len += 1;
                     t.upsert(&IntKey::new(key), &"bananas");
                 }

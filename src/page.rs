@@ -311,7 +311,7 @@ where
     K: PartialOrd,
     T: DerefMut<Target = Page<N, K>>,
 {
-    let mut page_ref = page.as_deref_mut()?;
+    let page_ref = page.as_deref_mut()?;
     debug_assert!(!page_ref.nodes.is_empty());
 
     // A page should be split into two parts - one page containing the elements

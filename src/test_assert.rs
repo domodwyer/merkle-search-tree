@@ -13,7 +13,6 @@ macro_rules! assert_tree {
         let mut v = $crate::visitor::assert_order::InvariantAssertOrder::new(v);
         page.pre_order_traversal(&mut v, false);
 
-        dbg!(&page);
         insta::assert_snapshot!(v.into_inner().finalise());
     }};
     // Validate a tree.
