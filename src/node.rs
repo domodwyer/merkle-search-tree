@@ -36,7 +36,7 @@ impl<const N: usize, K> Node<N, K> {
         }
 
         if let Some(p) = &self.lt_pointer {
-            if !p.pre_order_traversal(visitor, false) {
+            if !p.in_order_traversal(visitor, false) {
                 return false;
             }
         }

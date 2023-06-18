@@ -202,15 +202,15 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
 where
     K: PartialOrd + Display,
 {
-    /// Perform a depth-first, pre-order traversal, yielding each [`Page`] and
+    /// Perform a depth-first, in-order traversal, yielding each [`Page`] and
     /// [`Node`] to `visitor`.
     ///
-    /// A pre-order traversal yields nodes in key order, from min to max.
-    pub fn pre_order_traversal<'a, T>(&'a self, visitor: &mut T)
+    /// An in-order traversal yields nodes in key order, from min to max.
+    pub fn in_order_traversal<'a, T>(&'a self, visitor: &mut T)
     where
         T: Visitor<'a, N, K>,
     {
-        self.root.pre_order_traversal(visitor, false);
+        self.root.in_order_traversal(visitor, false);
     }
 }
 
@@ -268,7 +268,7 @@ mod tests {
     }
     impl Display for IntKey {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            self.0.fmt(f)
+            std::fmt::Display::fmt(&self.0, f)
         }
     }
 
@@ -597,17 +597,17 @@ mod tests {
             assert_eq!(a.root, b.root);
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-            a.pre_order_traversal(&mut asserter);
+            a.in_order_traversal(&mut asserter);
             asserter.unwrap_count(want_len);
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-            b.pre_order_traversal(&mut asserter);
+            b.in_order_traversal(&mut asserter);
             asserter.unwrap_count(want_len);
         }
 
         // Invariant 2: values in the tree are stored in key order.
         #[test]
-        fn prop_preorder_traversal_key_order(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
+        fn prop_in_order_traversal_key_order(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
             let mut t = MerkleSearchTree::default();
 
             let mut unique = HashSet::new();
@@ -621,7 +621,7 @@ mod tests {
             }
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-            t.pre_order_traversal(&mut asserter);
+            t.in_order_traversal(&mut asserter);
             asserter.unwrap_count(want_len);
         }
 
@@ -674,11 +674,11 @@ mod tests {
             }
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-            a.pre_order_traversal(&mut asserter);
+            a.in_order_traversal(&mut asserter);
             asserter.unwrap_count(unique.len());
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
-            b.pre_order_traversal(&mut asserter);
+            b.in_order_traversal(&mut asserter);
             asserter.unwrap_count(unique.len());
         }
     }

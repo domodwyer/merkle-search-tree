@@ -99,7 +99,7 @@ mod tests {
     };
 
     #[test]
-    fn test_preorder() {
+    fn test_order() {
         let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
         t.upsert(&LevelKey::new("I", 2), &"bananas");

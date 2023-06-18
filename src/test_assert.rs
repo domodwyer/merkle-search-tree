@@ -11,7 +11,7 @@ macro_rules! assert_tree {
 
         let v = $crate::visitor::dot::DotVisitor::default();
         let mut v = $crate::visitor::assert_order::InvariantAssertOrder::new(v);
-        page.pre_order_traversal(&mut v, false);
+        page.in_order_traversal(&mut v, false);
 
         insta::assert_snapshot!(v.into_inner().finalise());
     }};
@@ -20,14 +20,14 @@ macro_rules! assert_tree {
         let tree = $tree;
 
         let mut v = $crate::visitor::dot::DotVisitor::default();
-        tree.pre_order_traversal(&mut v);
+        tree.in_order_traversal(&mut v);
         let dot = v.finalise();
         println!("{}", dot.clone());
 
         let mut v = $crate::visitor::assert_order::InvariantAssertOrder::new(
             $crate::visitor::nop::NopVisitor,
         );
-        tree.pre_order_traversal(&mut v);
+        tree.in_order_traversal(&mut v);
 
         insta::assert_snapshot!(dot);
     }};

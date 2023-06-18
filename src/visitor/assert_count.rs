@@ -79,7 +79,7 @@ mod tests {
         t.upsert(&"H", &"bananas");
 
         let mut counter = InvariantAssertCount::new(NopVisitor::default());
-        t.pre_order_traversal(&mut counter);
+        t.in_order_traversal(&mut counter);
 
         counter.unwrap_count(11);
     }

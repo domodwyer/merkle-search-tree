@@ -64,12 +64,12 @@ impl<const N: usize, K> Page<N, K> {
         self.high_page.as_deref()
     }
 
-    /// Perform a depth-first, pre-order traversal, yielding each [`Page`] and
+    /// Perform a depth-first, in-order traversal, yielding each [`Page`] and
     /// [`Node`] to `visitor`.
     ///
     /// If `high_page` is true, this page was linked to from the parent via a
     /// high page pointer.
-    pub(crate) fn pre_order_traversal<'a, T>(&'a self, visitor: &mut T, high_page: bool) -> bool
+    pub(crate) fn in_order_traversal<'a, T>(&'a self, visitor: &mut T, high_page: bool) -> bool
     where
         T: Visitor<'a, N, K>,
     {
@@ -88,7 +88,7 @@ impl<const N: usize, K> Page<N, K> {
         }
 
         if let Some(h) = &self.high_page {
-            if !h.pre_order_traversal(visitor, true) {
+            if !h.in_order_traversal(visitor, true) {
                 return false;
             }
         }
