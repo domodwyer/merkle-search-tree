@@ -35,6 +35,7 @@ use criterion as _;
 #[cfg(test)]
 mod test_assert;
 
+pub mod diff;
 pub mod digest;
 mod node;
 mod page;
