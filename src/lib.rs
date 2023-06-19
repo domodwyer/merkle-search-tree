@@ -42,6 +42,9 @@ mod page;
 mod tree;
 pub mod visitor;
 
+#[cfg(test)]
+pub(crate) mod test_util;
+
 pub use node::*;
 pub use page::*;
 pub use tree::*;

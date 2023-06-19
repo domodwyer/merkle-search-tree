@@ -66,6 +66,10 @@ impl<const N: usize, K> Node<N, K> {
         self.value_hash = hash;
     }
 
+    pub(crate) fn lt_pointer(&self) -> Option<&Page<N, K>> {
+        self.lt_pointer.as_deref()
+    }
+
     pub(crate) fn lt_pointer_mut(&mut self) -> &mut Option<Box<Page<N, K>>> {
         &mut self.lt_pointer
     }

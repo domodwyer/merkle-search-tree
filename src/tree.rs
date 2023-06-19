@@ -1,12 +1,16 @@
-use std::{fmt::Display, marker::PhantomData};
+use std::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+};
 
 use siphasher::sip128::SipHasher24;
 
 use crate::{
+    diff::PageRange,
     digest::{self, siphash::SipHasher, Hasher, RootHash, ValueDigest},
     node::Node,
     page::{insert_intermediate_page, Page},
-    visitor::Visitor,
+    visitor::{page_range_hash::PageRangeHashVisitor, Visitor},
 };
 
 /// An alias for the default hash implementation.
@@ -132,10 +136,12 @@ where
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
-            _value_type: PhantomData::default(),
+            _value_type: PhantomData,
         }
     }
+}
 
+impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// Return the precomputed root hash, if any.
     ///
     /// This method never performs any hashing - if there's no precomputed hash
@@ -164,6 +170,25 @@ where
         self.root.maybe_generate_hash(&self.tree_hasher);
         self.root_hash = self.root.hash().cloned().map(RootHash::new);
         self.root_hash.as_ref().unwrap()
+    }
+
+    /// Serialise the key intervals covered by each [`Page`] within this tree.
+    ///
+    /// Performs a pre-order traversal of all pages within this tree and emits a
+    /// [`PageRange`] per page that covers the min/max key of the subtree at the
+    /// given page.
+    ///
+    /// The first page is the tree root, and as such has a key min/max that
+    /// equals the min/max of the keys stored within this tree.
+    pub fn serialise_page_ranges(&self) -> Option<Vec<PageRange<'_, K>>>
+    where
+        K: PartialOrd,
+    {
+        // The tree hash must be up-to-date.
+        self.root_hash_cached()?;
+        let mut v = PageRangeHashVisitor::default();
+        self.root.in_order_traversal(&mut v, false);
+        Some(v.finalise())
     }
 }
 
