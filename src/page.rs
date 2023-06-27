@@ -324,13 +324,22 @@ where
         debug_assert!(page_ref.min_key() > key);
 
         // The first gte node may have a lt_pointer with nodes that are lt key.
-        return split_off_lt(page_ref.nodes[0].lt_pointer_mut(), key);
+        return match split_off_lt(page_ref.nodes[0].lt_pointer_mut(), key) {
+            Some(v) => {
+                // Invalidate the page hash as the lt_page was split or the keys
+                // moved, changing the content the hash covers.
+                page_ref.tree_hash = None;
+                Some(v)
+            }
+            None => None,
+        };
     }
 
     // All the nodes are less than key.
     //
     // As an optimisation, simply return the existing page as the new page
-    // (retaining the pre-computed hash) and invalidate the old page.
+    // (retaining the pre-computed hash if possible) and invalidate the old
+    // page.
     if partition_idx == page_ref.nodes.len() {
         debug_assert!(page_ref.max_key() < key);
 
@@ -338,10 +347,26 @@ where
         // (max(nodes.key), key) range
         let lt_high_nodes = split_off_lt(&mut page_ref.high_page, key);
 
-        // Put the lt nodes back into the high page, taking the gte nodes.
-        let gte_page = std::mem::replace(&mut page_ref.high_page, lt_high_nodes.map(Box::new));
+        // If existing the high page was split (both sides are non-empty) then
+        // invalidate the page hash.
+        //
+        // This effectively invalidates the page range of the returned lt_page
+        // as the cached hash covers the high page (which has now been split,
+        // changing the content).
+        if lt_high_nodes.is_some() && page_ref.high_page.is_some() {
+            page_ref.tree_hash = None;
+        }
+
+        // Put the lt nodes back into the high page, taking the gte nodes from
+        // the high page.
+        //
+        // This leaves the lt_high_nodes in the high page link of page_ref.
+        let gte_high_page = std::mem::replace(&mut page_ref.high_page, lt_high_nodes.map(Box::new));
 
         // Initialise the page we're about to return.
+        //
+        // This puts an empty page into page_ref, taking the new lt nodes in
+        // page (potentially with the high page linked to lt_high_nodes)
         let lt_page = Some(std::mem::replace(
             page_ref,
             Page::new(page_ref.level, vec![]),
@@ -349,7 +374,7 @@ where
 
         // Put the gte nodes into the input page, if any (page should contain
         // all gte nodes after this split).
-        match gte_page {
+        match gte_high_page {
             Some(p) => *page_ref = *p,
             None => *page = None,
         }
@@ -622,6 +647,116 @@ mod tests {
         });
 
         assert_matches!(lt_page, None);
+    }
+
+    /// Test that a page containing entirely gte nodes, but with a linked high
+    /// page that requires splitting, has the page has invalidated.
+    #[test]
+    fn test_split_page_single_node_gt_with_high_page_split() {
+        let mut high_page = Box::new(Page::new(
+            40,
+            vec![
+                Node::new(10, MOCK_VALUE, None),
+                Node::new(15, MOCK_VALUE, None),
+            ],
+        ));
+        high_page.tree_hash = Some(MOCK_PAGE_HASH);
+
+        let mut page = Box::new(Page::new(42, vec![Node::new(5, MOCK_VALUE, None)]));
+        page.tree_hash = Some(MOCK_PAGE_HASH);
+        page.insert_high_page(high_page);
+
+        let mut page = Some(page);
+
+        let lt_page = split_off_lt(&mut page, &12);
+        assert_matches!(page, Some(p) => {
+            assert_eq!(p.level, 40);
+
+            // The modified page has the hash invalidated as the high page was
+            // split.
+            assert_eq!(p.tree_hash, None);
+
+            assert_eq!(p.nodes, [
+                Node::new(15, MOCK_VALUE, None),
+            ]);
+            assert_eq!(p.high_page, None);
+        });
+
+        assert_matches!(lt_page, Some(p) => {
+            assert_eq!(p.level, 42);
+            assert_eq!(p.tree_hash, None);
+
+            assert_eq!(p.nodes, [
+                Node::new(5, MOCK_VALUE, None),
+            ]);
+
+            assert_eq!(p.high_page.as_ref().unwrap().nodes, [
+                Node::new(10, MOCK_VALUE, None),
+            ]);
+            assert_eq!(p.high_page.as_ref().unwrap().tree_hash, None);
+        });
+    }
+
+    /// Test that a page containing entirely lt nodes, but with a recursively
+    /// followed child page that requires splitting, has the page has
+    /// invalidated.
+    ///
+    /// Toe ensure page hashes are recursively invalidated, the split child page
+    /// is actually two steps away from the target page.
+    #[test]
+    fn test_split_page_single_node_gt_with_child_page_split() {
+        // The bottom-most/deepest child page that requires splitting.
+        let child_2 = Some(Box::new(Page::new(
+            40,
+            vec![
+                Node::new(1, MOCK_VALUE, None),
+                // Split at 2
+                Node::new(3, MOCK_VALUE, None),
+            ],
+        )));
+        // The parent of child_2
+        let child_1 = Some(Box::new(Page::new(
+            41,
+            vec![Node::new(4, MOCK_VALUE, child_2)],
+        )));
+
+        // The parent of child_1
+        let mut page = Some(Box::new(Page::new(
+            42,
+            vec![Node::new(5, MOCK_VALUE, child_1)],
+        )));
+
+        page.as_mut().unwrap().tree_hash = Some(MOCK_PAGE_HASH);
+
+        let lt_page = split_off_lt(&mut page, &2);
+        assert_matches!(page, Some(p) => {
+            assert_eq!(p.level, 42);
+
+            // The modified page has the hash invalidated as the child page was
+            // split.
+            assert_eq!(p.tree_hash, None);
+
+            assert_eq!(p.nodes, [
+                Node::new(5, MOCK_VALUE, Some(Box::new(Page::new(
+                    41,
+                    vec![Node::new(4, MOCK_VALUE, Some(Box::new(Page::new(
+                        40,
+                        // 1 split away
+                        vec![Node::new(3, MOCK_VALUE, None)],
+                    ))))],
+                )))),
+            ]);
+        });
+
+        assert_matches!(lt_page, Some(p) => {
+            assert_eq!(p.level, 40);
+
+            assert_eq!(p.nodes, [
+                Node::new(1, MOCK_VALUE, None),
+            ]);
+
+            assert_eq!(p.tree_hash, None);
+        });
     }
 
     #[test]
