@@ -12,8 +12,9 @@ keywords = ["merkle", "tree", "crdt", "anti-entropy", "hash"]
 categories = ["data-structures", "cryptography"]
 
 [dependencies]
-siphasher = "0.3.10"
 base64 = { version = "0.21.2", optional = true }
+siphasher = "0.3.10"
+tracing = { version = "0.1.37", optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
@@ -21,8 +22,11 @@ criterion = "0.5.1"
 insta = "1.29.0"
 paste = "1.0.12"
 proptest = "1.2.0"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features=["env-filter"] }
 
 [features]
+tracing = ["dep:tracing"]
 default = ["digest_base64"]
 digest_base64 = ["dep:base64"]
 

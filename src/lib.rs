@@ -31,6 +31,12 @@
 // Silence unused_crate_dependencies false positive.
 #[cfg(test)]
 use criterion as _;
+#[cfg(test)]
+use tracing_subscriber as _;
+
+/// Tracing event/log helpers.
+#[macro_use]
+mod tracing;
 
 #[cfg(test)]
 mod test_assert;

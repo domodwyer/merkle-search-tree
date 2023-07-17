@@ -169,6 +169,13 @@ where
     pub fn root_hash(&mut self) -> &RootHash {
         self.root.maybe_generate_hash(&self.tree_hasher);
         self.root_hash = self.root.hash().cloned().map(RootHash::new);
+
+        #[cfg(feature = "digest_base64")] // Required for display impl
+        debug!(
+            root_hash=%self.root_hash.as_ref().unwrap(),
+            "regenerated root hash"
+        );
+
         self.root_hash.as_ref().unwrap()
     }
 
