@@ -1,3 +1,4 @@
+mod diff_builder;
 mod range_list;
 
 use std::fmt::Display;
