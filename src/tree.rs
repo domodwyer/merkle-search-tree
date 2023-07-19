@@ -259,6 +259,7 @@ mod tests {
             mock::{LevelKey, MockHasher},
             Digest,
         },
+        test_util::IntKey,
         visitor::{
             assert_count::InvariantAssertCount, assert_order::InvariantAssertOrder, nop::NopVisitor,
         },
@@ -273,7 +274,7 @@ mod tests {
     struct FixtureHasher;
     impl Hasher<16, IntKey> for FixtureHasher {
         fn hash(&self, value: &IntKey) -> Digest<16> {
-            self.hash(&value.0)
+            self.hash(&value.unwrap())
         }
     }
     impl Hasher<16, u64> for FixtureHasher {
@@ -281,26 +282,6 @@ mod tests {
             let mut h = SipHasher24::default();
             h.write_u64(*value);
             Digest::new(h.finish128().as_bytes())
-        }
-    }
-
-    /// An wrapper over integers, implementing `AsRef<[u8]>` with deterministic
-    /// output across platforms with differing endian-ness.
-    #[derive(Debug, PartialOrd, PartialEq, Clone, Hash)]
-    struct IntKey(u64, [u8; 8]);
-    impl IntKey {
-        fn new(v: u64) -> Self {
-            Self(v, v.to_be_bytes())
-        }
-    }
-    impl AsRef<[u8]> for IntKey {
-        fn as_ref(&self) -> &[u8] {
-            &self.1
-        }
-    }
-    impl Display for IntKey {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            std::fmt::Display::fmt(&self.0, f)
         }
     }
 
