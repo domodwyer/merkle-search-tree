@@ -5,7 +5,7 @@
 /// preferred for security/compliance reasons.
 ///
 /// Use of a faster hash function results in faster tree operations. Use of
-/// 64bit hash values (`N == 8`) and smaller is not recommended due to the
+/// 64bit hash values (`N <= 8`) and smaller is not recommended due to the
 /// higher probability of collisions.
 ///
 /// # Determinism & Portability
@@ -26,6 +26,9 @@
 /// Users may choose to initialise the [`SipHasher`] with seed keys if untrusted
 /// key/value user input is used in a tree in order to prevent chosen-hash
 /// collision attacks.
+///
+/// The provided [`SipHasher`] implementation is not portable across platforms /
+/// Rust versions due to limitations of the [`Hash`] trait.
 ///
 /// [`SipHasher`]: super::siphash::SipHasher
 pub trait Hasher<const N: usize, T> {

@@ -8,7 +8,12 @@ use crate::{
     visitor::Visitor,
 };
 
-/// A group of [`Node`] instances of the same level.
+/// A group of [`Node`] instances at the same location within the tree.
+///
+/// A page within an MST is a probabilistically sized structure, with varying
+/// numbers of [`Node`] within. A page has a min/max key range defined by the
+/// nodes within it, and the page hash acts as a content hash, describing the
+/// state of the page and the nodes within it.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Page<const N: usize, K> {
     level: u8,
@@ -51,6 +56,12 @@ impl<const N: usize, K> Page<N, K> {
         self.tree_hash.as_ref()
     }
 
+    /// Set the high page pointer for this page.
+    ///
+    /// # Panics
+    ///
+    /// Panics if this page already has a high page linked, or `p` contains no
+    /// nodes.
     pub(crate) fn insert_high_page(&mut self, p: Box<Self>) {
         debug_assert!(self.high_page.is_none());
         debug_assert!(!p.nodes().is_empty());
@@ -60,6 +71,7 @@ impl<const N: usize, K> Page<N, K> {
         self.high_page = Some(p)
     }
 
+    /// Return a pointer to the linked high page, if any.
     pub(crate) fn high_page(&self) -> Option<&Self> {
         self.high_page.as_deref()
     }
@@ -178,11 +190,6 @@ where
                 // this page, which means this page must be non-zero.
                 debug_assert_ne!(!self.level, 0);
                 debug_assert!(!self.nodes.is_empty());
-
-                // Mark the page as "dirty" causing the hash to be recomputed on
-                // demand, coalescing multiple updates instead of hashing for
-                // each.
-                self.tree_hash = None;
 
                 // Find the node that is greater-than-or-equal-to key to descend
                 // into.
