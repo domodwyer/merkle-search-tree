@@ -658,17 +658,21 @@ mod tests {
                     continue;
                 }
 
+                // Add the key to tree A
                 a.upsert(&IntKey::new(key), &"bananas");
                 assert_eq!(a.root_hash_cached(), None);
 
-                // The trees diverge
+                // The trees have now diverged
                 assert_ne!(a.root_hash(), b.root_hash());
+                assert_eq!(a.root_hash_cached().unwrap().clone(), *a.root_hash());
 
+                // Add the key to tree B
                 b.upsert(&IntKey::new(key), &"bananas");
                 assert_eq!(b.root_hash_cached(), None);
 
-                // And then converge
+                // And now the tees have converged
                 assert_eq!(a.root_hash(), b.root_hash());
+                assert_eq!(b.root_hash_cached().unwrap().clone(), *b.root_hash());
             }
 
             // Update a value for an existing key
@@ -678,12 +682,14 @@ mod tests {
 
                  // The trees diverge
                  assert_ne!(a.root_hash(), b.root_hash());
+                 assert_eq!(a.root_hash_cached().unwrap().clone(), *a.root_hash());
 
                  // And converge once again
-                 b.upsert(&IntKey::new(key), &"platanos");
-                 assert_eq!(b.root_hash_cached(), None);
+                 a.upsert(&IntKey::new(key), &"platanos");
+                 assert_eq!(a.root_hash_cached(), None);
 
-                 assert_ne!(a.root_hash(), b.root_hash());
+                 assert_eq!(a.root_hash(), b.root_hash());
+                 assert_eq!(b.root_hash_cached().unwrap().clone(), *b.root_hash());
             }
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
