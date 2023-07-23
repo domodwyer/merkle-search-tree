@@ -606,8 +606,7 @@ mod tests {
                 b.upsert(&IntKey::new(key), &"bananas");
             }
 
-            assert_eq!(a.root_hash(), b.root_hash());
-            assert_eq!(a.root, b.root);
+            assert_node_equal(&mut a, &mut b);
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
             a.in_order_traversal(&mut asserter);
@@ -639,7 +638,10 @@ mod tests {
         }
 
         // Invariant 3: two independent trees contain the same data iff their
-        // root hashes are identical
+        // root hashes are identical.
+        //
+        // Additionally the serialised page ranges MUST match iff the trees
+        // match.
         #[test]
         fn prop_root_hash_data_equality(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
             let mut a = MerkleSearchTree::default();
@@ -663,16 +665,14 @@ mod tests {
                 assert_eq!(a.root_hash_cached(), None);
 
                 // The trees have now diverged
-                assert_ne!(a.root_hash(), b.root_hash());
-                assert_eq!(a.root_hash_cached().unwrap().clone(), *a.root_hash());
+                assert_node_not_equal(&mut a, &mut b);
 
                 // Add the key to tree B
                 b.upsert(&IntKey::new(key), &"bananas");
                 assert_eq!(b.root_hash_cached(), None);
 
                 // And now the tees have converged
-                assert_eq!(a.root_hash(), b.root_hash());
-                assert_eq!(b.root_hash_cached().unwrap().clone(), *b.root_hash());
+                assert_node_equal(&mut a, &mut b);
             }
 
             // Update a value for an existing key
@@ -681,15 +681,14 @@ mod tests {
                  assert_eq!(b.root_hash_cached(), None);
 
                  // The trees diverge
-                 assert_ne!(a.root_hash(), b.root_hash());
-                 assert_eq!(a.root_hash_cached().unwrap().clone(), *a.root_hash());
+                assert_node_not_equal(&mut a, &mut b);
 
                  // And converge once again
                  a.upsert(&IntKey::new(key), &"platanos");
                  assert_eq!(a.root_hash_cached(), None);
 
-                 assert_eq!(a.root_hash(), b.root_hash());
-                 assert_eq!(b.root_hash_cached().unwrap().clone(), *b.root_hash());
+                // And now the tees have converged
+                assert_node_equal(&mut a, &mut b);
             }
 
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
@@ -700,5 +699,55 @@ mod tests {
             b.in_order_traversal(&mut asserter);
             asserter.unwrap_count(unique.len());
         }
+    }
+
+    fn assert_node_equal<K, V>(a: &mut MerkleSearchTree<K, V>, b: &mut MerkleSearchTree<K, V>)
+    where
+        K: AsRef<[u8]> + PartialOrd + Debug,
+    {
+        assert_eq!(a.root_hash(), b.root_hash(), "root hashes should be equal");
+        assert_eq!(
+            a.serialise_page_ranges(),
+            b.serialise_page_ranges(),
+            "serialised pages should match"
+        );
+        // The cached values must always match their computed values.
+        assert_eq!(
+            b.root_hash_cached().unwrap().clone(),
+            *b.root_hash(),
+            "cached hashes should be equal for b"
+        );
+        assert_eq!(
+            a.root_hash_cached().unwrap().clone(),
+            *a.root_hash(),
+            "cached hashes should be equal for a"
+        );
+    }
+
+    fn assert_node_not_equal<K, V>(a: &mut MerkleSearchTree<K, V>, b: &mut MerkleSearchTree<K, V>)
+    where
+        K: AsRef<[u8]> + PartialOrd + Debug,
+    {
+        assert_ne!(
+            a.root_hash(),
+            b.root_hash(),
+            "root hash should not be equal"
+        );
+        assert_ne!(
+            a.serialise_page_ranges(),
+            b.serialise_page_ranges(),
+            "serialised pages should not match"
+        );
+        // The cached values must always match their computed values.
+        assert_eq!(
+            b.root_hash_cached().unwrap().clone(),
+            *b.root_hash(),
+            "cached hashes should always be equal for b"
+        );
+        assert_eq!(
+            a.root_hash_cached().unwrap().clone(),
+            *a.root_hash(),
+            "cached hashes should always be equal for a"
+        );
     }
 }
