@@ -2,7 +2,7 @@
 name = "merkle-search-tree"
 description = "A data structure for efficient state-based CRDT replication and anti-entropy"
 authors = ["Dom Dwyer <dom@itsallbroken.com>"]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 license = "Apache-2.0"
@@ -23,7 +23,7 @@ insta = "1.29.0"
 paste = "1.0.12"
 proptest = "1.2.0"
 tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features=["env-filter"] }
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 
 [features]
 tracing = ["dep:tracing"]
