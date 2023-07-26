@@ -12,6 +12,8 @@ efficient anti-entropy primitive, allowing independent replicas to concurrently
 modify data within the tree with deterministic and eventual convergence across
 all peers.
 
+See [`MerkleSearchTree`] documentation.
+
 ## Use It
 
 ```rust
@@ -55,7 +57,33 @@ assert_matches::assert_matches!(diff_range.as_slice(), [range] => {
 });
 ```
 
+## Performance
+
+Operations against a Merkle Search Tree are _fast_, executing against
+millions/billions of keys per second:
+
+| Key Count    | Insert All Keys | Generate Root | Serialise | Diff (consistent) | Diff (inconsistent) |
+| ------------ | --------------- | ------------- | --------- | ----------------- | ------------------- |
+| 100 keys     | 9ns             | 14µs          | 96ns      | 551ns             | 533ns               |
+| 1,000 keys   | 111µs           | 142µs         | 813ns     | 6µs               | 6us                 |
+| 10,000 keys  | 1619µs          | 1436µs        | 9µs       | 79µs              | 78µs                |
+| 100,000 keys | 21ms            | 9ms           | 109µs     | 555µs             | 556µs               |
+
+The above measurements capture the single-threaded performance of operations
+against a tree containing varying numbers of keys on a M1 MacBook Pro.
+
+* _Insert All Keys_: insert the N keys listed for the row into an empty tree
+* _Generate Root_: regenerate the root hash of a modified tree
+* _Serialise_: encode the tree into a diff format for network communication
+* _Diff (consistent)_: diff generation for identical trees (no differing ranges)
+* _Diff (inconsistent)_: diff generation for a fully inconsistent tree
+
+The benchmarks to generate these numbers are included in this repo (run `cargo
+bench`).
+
 [paper]: https://inria.hal.science/hal-02303490
+[`MerkleSearchTree`]:
+    https://docs.rs/merkle-search-tree/latest/merkle_search_tree/struct.MerkleSearchTree.html
 [^cite]: Alex Auvolat, François Taïani. Merkle Search Trees: Efficient
     State-Based CRDTs in Open Networks. SRDS 2019 - 38th IEEE International
     Symposium on Reliable Distributed Systems, Oct 2019, Lyon, France. pp.1-10,
