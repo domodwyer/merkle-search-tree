@@ -45,9 +45,6 @@ repos:
       - id: mixed-line-ending
         args: ["--fix=no"]
         stages: [commit, manual]
-      - id: no-commit-to-branch
-        args: ["--branch", "master", "--branch", "main"]
-        stages: [commit]
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: 3c7d67d39ad19fbcc3a2c66bc89708fe27347b6d
