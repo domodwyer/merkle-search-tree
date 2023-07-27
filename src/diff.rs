@@ -28,15 +28,6 @@ impl<'a, K> Clone for DiffRange<'a, K> {
 }
 
 impl<'a, K> DiffRange<'a, K> {
-    /// Returns true if `self` is a superset of `other` (not a strict superset -
-    /// equal ranges are treated as supersets of each other).
-    pub fn is_superset_of(&self, other: &PageRange<'a, K>) -> bool
-    where
-        K: PartialOrd,
-    {
-        self.start <= other.start() && self.end >= other.end()
-    }
-
     /// Returns true if the range within `self` overlaps any portion of the
     /// range within `p`.
     pub fn overlaps(&self, p: &Self) -> bool
