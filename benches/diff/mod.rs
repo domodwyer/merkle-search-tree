@@ -70,6 +70,10 @@ fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize, pcnt_value
 
     g.throughput(Throughput::Elements(n_values as _)); // Keys per second
     g.bench_function(BenchmarkId::from(bench_name), |b| {
-        b.iter(|| diff(&original_pages, &updated_pages));
+        b.iter_batched(
+            || (original_pages.clone(), updated_pages.clone()),
+            |(a, b)| diff(a, b),
+            criterion::BatchSize::PerIteration,
+        );
     });
 }

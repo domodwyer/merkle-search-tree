@@ -96,8 +96,8 @@ impl<'a, K> DiffRange<'a, K> {
 /// NOT terminate.
 pub fn diff<'p, 'a: 'p, T, U, K>(local: T, peer: U) -> Vec<DiffRange<'p, K>>
 where
-    T: IntoIterator<Item = &'a PageRange<'a, K>>,
-    U: IntoIterator<Item = &'p PageRange<'p, K>>,
+    T: IntoIterator<Item = PageRange<'a, K>>,
+    U: IntoIterator<Item = PageRange<'p, K>>,
     K: PartialOrd + Ord + Debug + 'p + 'a,
 {
     let local = local.into_iter();
@@ -121,11 +121,11 @@ where
     debug!("calculating diff");
 
     let root = match peer.peek() {
-        Some(v) => v,
+        Some(v) => v.clone(),
         None => return vec![],
     };
 
-    recurse_diff(root, &mut peer, &mut local, &mut diff_builder);
+    recurse_diff(&root, &mut peer, &mut local, &mut diff_builder);
 
     diff_builder.into_diff_vec()
 }
@@ -138,8 +138,8 @@ fn recurse_subtree<'p, 'a: 'p, T, U, K>(
     diff_builder: &mut DiffListBuilder<'p, K>,
 ) -> bool
 where
-    T: Iterator<Item = &'a PageRange<'a, K>>,
-    U: Iterator<Item = &'p PageRange<'p, K>>,
+    T: Iterator<Item = PageRange<'a, K>>,
+    U: Iterator<Item = PageRange<'p, K>>,
     K: PartialOrd + Ord + Debug + 'p + 'a,
 {
     // Recurse into the subtree, which will exit immediately if the next value
@@ -177,12 +177,12 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
     local: &mut Peekable<T>,
     diff_builder: &mut DiffListBuilder<'p, K>,
 ) where
-    T: Iterator<Item = &'a PageRange<'a, K>>,
-    U: Iterator<Item = &'p PageRange<'p, K>>,
+    T: Iterator<Item = PageRange<'a, K>>,
+    U: Iterator<Item = PageRange<'p, K>>,
     K: PartialOrd + Ord + Debug + 'p + 'a,
 {
     // The last visited peer page, if any.
-    let mut last_p: Option<&PageRange<'_, K>> = None;
+    let mut last_p = None;
 
     // Process this subtree, descending down inconsistent paths recursively, and
     // iterating through the tree.
@@ -195,7 +195,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             }
         };
 
-        let mut l = match maybe_advance_within(p, local) {
+        let mut l = match maybe_advance_within(&p, local) {
             Some(v) => v,
             None => {
                 // If there's no matching local page that overlaps with p, then
@@ -206,7 +206,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
                 // (last_p), or the start of the subtree_root if none.
                 let start = last_p
                     .as_ref()
-                    .map(|v| v.end())
+                    .map(|v: &PageRange<'_, K>| v.end())
                     .unwrap_or(subtree_root.start());
                 // And end at the next local page key, or the page end.
                 //
@@ -233,10 +233,10 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             }
         };
 
-        last_p = Some(p);
+        last_p = Some(p.clone());
 
         // Never escape the subtree rooted at p_parent.
-        assert!(subtree_root.is_superset_of(p));
+        assert!(subtree_root.is_superset_of(&p));
 
         trace!(
             peer_page=?p,
@@ -246,7 +246,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
 
         // Advance the local cursor to minimise the comparable range, in turn
         // minimising the sync range.
-        while let Some(v) = local.next_if(|v| v.is_superset_of(p)) {
+        while let Some(v) = local.next_if(|v| v.is_superset_of(&p)) {
             trace!(
                 peer_page=?p,
                 skip_local_page=?l,
@@ -319,7 +319,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             // Skip hash evaluation (they're definitely not equal) and avoid
             // adding the full peer range as a consistent/inconsistent range -
             // prefer instead to optimistically fetch only the range diff.
-            recurse_subtree(p, peer, local, diff_builder);
+            recurse_subtree(&p, peer, local, diff_builder);
             continue;
         }
 
@@ -345,7 +345,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
         // Evaluate the sub-tree, causing all the (consistent) child ranges to
         // be added to the consistent list to, shrink this inconsistent range
         // (or simply advancing through the subtree if this page is consistent).
-        recurse_subtree(p, peer, local, diff_builder);
+        recurse_subtree(&p, peer, local, diff_builder);
     }
 }
 
@@ -354,9 +354,9 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
 fn maybe_advance_within<'a, 'p, K, T>(
     parent: &PageRange<'p, K>,
     cursor: &mut Peekable<T>,
-) -> Option<&'a PageRange<'a, K>>
+) -> Option<PageRange<'a, K>>
 where
-    T: Iterator<Item = &'a PageRange<'a, K>>,
+    T: Iterator<Item = PageRange<'a, K>>,
     K: PartialOrd + 'a,
 {
     if cursor
@@ -458,7 +458,7 @@ mod tests {
 
         let peer = local.clone();
 
-        assert_matches!(diff(&local, &peer).as_slice(), []);
+        assert_matches!(diff(local, peer).as_slice(), []);
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod tests {
         peer[0] = PageRange::new(peer[0].start(), &11, new_digest(42));
 
         // Nothing to ask for - the peer is behind
-        assert_matches!(diff(&local, &peer).as_slice(), []);
+        assert_matches!(diff(local, peer).as_slice(), []);
     }
 
     #[test]
@@ -508,7 +508,7 @@ mod tests {
         local[0] = PageRange::new(local[0].start(), &11, new_digest(42));
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 11, end: 15 }]
         );
     }
@@ -547,7 +547,7 @@ mod tests {
             PageRange::new(&15, &15, new_digest(5)),
         ];
 
-        assert_matches!(diff(&local, &peer).as_slice(), []);
+        assert_matches!(diff(local, peer).as_slice(), []);
     }
 
     #[test]
@@ -580,7 +580,7 @@ mod tests {
         ];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 2, end: 3 }]
         );
     }
@@ -607,7 +607,7 @@ mod tests {
         ];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 2, end: 6 }]
         );
     }
@@ -633,7 +633,7 @@ mod tests {
             PageRange::new(&15, &15, new_digest(5)),
         ];
 
-        assert_matches!(diff(&local, &peer).as_slice(), []);
+        assert_matches!(diff(local, peer).as_slice(), []);
     }
 
     #[test]
@@ -665,7 +665,7 @@ mod tests {
         ];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             // Range (3,6) is optimal, but this gets the job done.
             [DiffRange { start: 2, end: 15 }]
         );
@@ -691,7 +691,7 @@ mod tests {
         peer[0] = PageRange::new(peer[0].start(), &16, new_digest(42));
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 15, end: 16 }]
         );
     }
@@ -719,7 +719,7 @@ mod tests {
         // Instead, the known-good sub-tree pages can be removed from the sync
         // range.
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 6, end: 15 }]
         );
     }
@@ -749,7 +749,7 @@ mod tests {
         peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(42));
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 6, end: 15 }]
         );
     }
@@ -791,7 +791,7 @@ mod tests {
         peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(42));
 
         assert_matches!(
-            diff(&local, &peer.clone()).as_slice(),
+            diff(local, peer.clone()).as_slice(),
             [DiffRange { start: 6, end: 15 }]
         );
 
@@ -805,7 +805,7 @@ mod tests {
         // 2, 15 because the root page is inconsistent and there's no consistent
         // pages that shrink the range.
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 2, end: 15 }]
         );
     }
@@ -855,7 +855,7 @@ mod tests {
         ];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [
                 DiffRange {
                     start: 1331283967702353742,
@@ -879,7 +879,7 @@ mod tests {
         let peer = vec![PageRange::new(&1, &42, new_digest(1))];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [
                 DiffRange { start: 1, end: 2 },
                 DiffRange { start: 15, end: 42 },
@@ -894,7 +894,7 @@ mod tests {
         let peer = vec![];
         let local = vec![PageRange::new(&1, &42, new_digest(1))];
 
-        assert_matches!(diff(&local, &peer).as_slice(), []);
+        assert_matches!(diff(local, peer).as_slice(), []);
     }
 
     #[test]
@@ -905,7 +905,7 @@ mod tests {
         let peer = vec![PageRange::new(&1, &42, new_digest(1))];
 
         assert_matches!(
-            diff(&local, &peer).as_slice(),
+            diff(local, peer).as_slice(),
             [DiffRange { start: 1, end: 42 }]
         );
     }
@@ -1232,8 +1232,7 @@ mod tests {
         let a_tree = from.page_ranges();
 
         let mut to2 = to.clone();
-        let to_tree = to2.page_ranges();
-        let want = diff(&to_tree, &a_tree);
+        let want = diff(to2.page_ranges(), a_tree);
 
         let mut count = 0;
         for range in want {

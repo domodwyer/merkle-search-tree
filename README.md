@@ -43,17 +43,10 @@ node_b.upsert(&"donkey", &());
 assert_ne!(node_a.root_hash(), node_b.root_hash());
 
 // Generate compact summaries of the MST content, suitable for transmission over 
-// the network.
-let node_a_summary = node_a.serialise_page_ranges().unwrap();
-let node_b_summary = node_b.serialise_page_ranges().unwrap();
-
-// The serialised format is used to compute the diff between two trees.
-// 
-// The trees can be converged by pulling key ranges from peers - an inconsistent 
-// range identification implementation is included in this library:
+// the network, and use it to compute the diff between two trees.
 let diff_range = diff(
-    node_b_summary.iter(),
-    node_a_summary.iter(),
+    node_b.serialise_page_ranges().unwrap().into_iter(),
+    node_a.serialise_page_ranges().unwrap().into_iter(),
 );
 
 // In this case, node B can obtain the missing/differing keys in node A by 
