@@ -19,7 +19,7 @@ jobs:
       run: cargo build --${{matrix.feature_flags}} --verbose
 
     - name: test
-      run: cargo test --${{matrix.feature_flags}} --lib --examples --tests --verbose
+      run: cargo test --${{matrix.feature_flags}} --verbose
 
     - name: build benchmarks
       run: cargo test --${{matrix.feature_flags}} --benches --no-run --verbose
