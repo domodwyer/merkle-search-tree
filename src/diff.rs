@@ -1,107 +1,13 @@
 //! Tree difference calculation algorithm & associated types.
 
 mod diff_builder;
+mod page_range;
 mod range_list;
+use std::{fmt::Debug, iter::Peekable};
 
-use std::{
-    fmt::{Debug, Display},
-    iter::Peekable,
-};
+pub use page_range::*;
 
-use crate::{diff::diff_builder::DiffListBuilder, digest::PageDigest, Page};
-
-/// A serialised representation of the range of keys contained within the
-/// sub-tree rooted at a given [`Page`], and the associated [`PageDigest`].
-#[derive(Debug, PartialEq)]
-pub struct PageRange<'a, K> {
-    /// The inclusive start & end key bounds of this range.
-    start: &'a K,
-    end: &'a K,
-
-    /// The hash of this page, and the sub-tree rooted at it.
-    hash: PageDigest,
-}
-
-impl<'a, K> Display for PageRange<'a, K>
-where
-    K: Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("({}, {})", self.start, self.end))
-    }
-}
-
-impl<'a, K> Clone for PageRange<'a, K> {
-    fn clone(&self) -> Self {
-        Self {
-            start: self.start,
-            end: self.end,
-            hash: self.hash.clone(),
-        }
-    }
-}
-
-impl<'a, const N: usize, K> From<&'a Page<N, K>> for PageRange<'a, K> {
-    fn from(page: &'a Page<N, K>) -> Self {
-        PageRange {
-            start: page.min_key(),
-            end: page
-                .high_page()
-                .map(|v| v.max_key())
-                .unwrap_or_else(|| page.max_key()),
-            hash: page
-                .hash()
-                .expect("page visitor requires prior hash regeneration")
-                .clone(),
-        }
-    }
-}
-
-impl<'a, K> PageRange<'a, K> {
-    /// Construct a [`PageRange`] for the given key interval and [`PageDigest`].
-    pub fn new(start: &'a K, end: &'a K, hash: PageDigest) -> Self {
-        Self { start, end, hash }
-    }
-
-    /// Returns the inclusive start of this [`PageRange`].
-    pub fn start(&self) -> &'a K {
-        self.start
-    }
-
-    /// Returns the inclusive end of this [`PageRange`]
-    pub fn end(&self) -> &'a K {
-        self.end
-    }
-
-    /// Returns true if the range within `self` overlaps any portion of the
-    /// range within `p`.
-    pub fn overlaps(&self, p: &Self) -> bool
-    where
-        K: PartialOrd,
-    {
-        //   0 1 2 3 4 5 6 7 8 9
-        // A |       |
-        // B       |   |
-        let leading_edge = self.start <= p.start && self.end >= p.start;
-        let trailing_edge = p.start <= self.end && p.end >= self.end;
-        leading_edge || trailing_edge
-    }
-
-    /// Returns true if `self` is a superset of `other` (not a strict superset -
-    /// equal ranges are treated as supersets of each other).
-    pub fn is_superset_of(&self, other: &Self) -> bool
-    where
-        K: PartialOrd,
-    {
-        self.start <= other.start && self.end >= other.end
-    }
-
-    /// Returns the [`PageDigest`] of this page, representing the content of the
-    /// page and all pages within the sub-tree rooted at it.
-    pub fn hash(&self) -> &PageDigest {
-        &self.hash
-    }
-}
+use crate::diff::diff_builder::DiffListBuilder;
 
 /// An inclusive range of keys that differ between two serialised ordered sets
 /// of [`PageRange`].
@@ -128,7 +34,7 @@ impl<'a, K> DiffRange<'a, K> {
     where
         K: PartialOrd,
     {
-        self.start <= other.start && self.end >= other.end
+        self.start <= other.start() && self.end >= other.end()
     }
 
     /// Returns true if the range within `self` overlaps any portion of the
@@ -259,7 +165,7 @@ where
             "requesting unevaluated subtree page"
         );
         // Add all the un-evaluated peer sub-tree pages to the sync list.
-        diff_builder.inconsistent(p.start, p.end);
+        diff_builder.inconsistent(p.start(), p.end());
     }
 
     assert!(peer
@@ -307,12 +213,18 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
                 //
                 // Request the range starting from the end of the last checked p
                 // (last_p), or the start of the subtree_root if none.
-                let start = last_p.as_ref().map(|v| v.end).unwrap_or(subtree_root.start);
+                let start = last_p
+                    .as_ref()
+                    .map(|v| v.end())
+                    .unwrap_or(subtree_root.start());
                 // And end at the next local page key, or the page end.
                 //
                 // Any pages missing between p.end and the end of this subtree
                 // will be added by the caller (recurse_subtree).
-                let end = local.peek().map(|v| v.start.min(p.end)).unwrap_or(p.end);
+                let end = local
+                    .peek()
+                    .map(|v| v.start().min(p.end()))
+                    .unwrap_or(p.end());
                 if end >= start {
                     debug!(
                         peer_page=?p,
@@ -355,7 +267,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
 
         // If the bounds don't match, fetch the missing parts from the peer and
         // move on to the next page.
-        if p.start < l.start {
+        if p.start() < l.start() {
             trace!(
                 peer_page=?p,
                 local_page=?l,
@@ -369,7 +281,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             // This would cause the same range to be requested by this check
             // as the left-most edge is descended, so de-duplicate the
             // requests.
-            diff_builder.inconsistent(p.start, l.start); // exclusive end range
+            diff_builder.inconsistent(p.start(), l.start()); // exclusive end range
 
             // Ignore any potential inconsistency within the intersection
             // between pages when fetching a range bounds mismatch.
@@ -378,10 +290,10 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             // for the "leading edge" case, fetching only the range bounds and
             // assuming it'll make the page consistent instead of fetching the
             // whole page for what may be a single new (monotonic) key.
-            diff_builder.consistent(l.start.max(p.start), l.end.min(p.end));
+            diff_builder.consistent(l.start().max(p.start()), l.end().min(p.end()));
         }
 
-        if p.end > l.end {
+        if p.end() > l.end() {
             trace!(
                 peer_page=?p,
                 local_page=?l,
@@ -389,11 +301,11 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             );
             // As above for the less-than side, dedupe end ranges for the
             // right-most edge.
-            diff_builder.inconsistent(l.end, p.end); // inclusive end range
+            diff_builder.inconsistent(l.end(), p.end()); // inclusive end range
 
             // Ignore any potential inconsistency within the intersection
             // between pages when fetching a range bounds mismatch - see above.
-            diff_builder.consistent(l.start.max(p.start), l.end.min(p.end));
+            diff_builder.consistent(l.start().max(p.start()), l.end().min(p.end()));
         }
 
         // If the page bounds do not match, it is guaranteed this page is
@@ -406,7 +318,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
         // Once the full range of keys for this page is obtained, a subsequent
         // diff will cause a proper consistency check of this page and fetch
         // only the keys/child ranges that actually differ.
-        if p.start != l.start || p.end != l.end {
+        if p.start() != l.start() || p.end() != l.end() {
             debug!(
                 peer_page=?p,
                 local_page=?l,
@@ -420,7 +332,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             continue;
         }
 
-        if l.hash == p.hash {
+        if l.hash() == p.hash() {
             debug!(
                 peer_page=?p,
                 local_page=?l,
@@ -428,7 +340,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             );
 
             // Record this page as fully consistent.
-            diff_builder.consistent(p.start, p.end);
+            diff_builder.consistent(p.start(), p.end());
         } else {
             debug!(
                 peer_page=?p,
@@ -436,7 +348,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
                 "hash mismatch"
             );
 
-            diff_builder.inconsistent(p.start, p.end);
+            diff_builder.inconsistent(p.start(), p.end());
         }
 
         // Evaluate the sub-tree, causing all the (consistent) child ranges to
@@ -476,7 +388,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        digest::Digest,
+        digest::{Digest, PageDigest},
         test_util::{IntKey, Node},
     };
 
@@ -496,16 +408,8 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test_page_is_superset_of_ $name>]() {
-                    let a = PageRange {
-                        start: &$a_start,
-                        end: $a_end,
-                        hash: new_digest(42),
-                    };
-                    let b = PageRange {
-                        start: &$b_start,
-                        end: $b_end,
-                        hash: new_digest(42),
-                    };
+                    let a = PageRange::new(&$a_start, $a_end, new_digest(42));
+                    let b = PageRange::new(&$b_start, $b_end, new_digest(42));
 
                     assert!(a.is_superset_of(&b) == $want);
 
@@ -554,31 +458,11 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = local.clone();
@@ -591,31 +475,11 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let mut peer = local.clone();
@@ -623,11 +487,9 @@ mod tests {
         // Remove the last page
         let _ = peer.pop().unwrap();
 
-        // Invalidate the root/parent
-        peer[0].hash = new_digest(42);
-
-        // Update the peer root range to reflect the missing last page
-        peer[0].end = &11;
+        // Invalidate the root/parent and update the peer root range to reflect
+        // the missing last page
+        peer[0] = PageRange::new(peer[0].start(), &11, new_digest(42));
 
         // Nothing to ask for - the peer is behind
         assert_matches!(diff(&local, &peer).as_slice(), []);
@@ -638,31 +500,11 @@ mod tests {
         enable_logging!();
 
         let mut local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = local.clone();
@@ -670,11 +512,9 @@ mod tests {
         // Remove the last page
         let _ = local.pop().unwrap();
 
-        // Invalidate the root/parent
-        local[0].hash = new_digest(42);
-
-        // Update the local root range to reflect the missing last page
-        local[0].end = &11;
+        // Invalidate the root/parent and update the local root range to reflect
+        // the missing last page
+        local[0] = PageRange::new(local[0].start(), &11, new_digest(42));
 
         assert_matches!(
             diff(&local, &peer).as_slice(),
@@ -692,56 +532,28 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = vec![
-            PageRange {
-                start: &3, // Differs
-                end: &15,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &3, // Differs
-                end: &6,
-                hash: new_digest(43), // Differs
-            },
+            PageRange::new(
+                &3, // Differs
+                &15,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(
+                &3, // Differs
+                &6,
+                new_digest(43), // Differs
+            ),
             //
             // No page containing 2 at level 0
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         assert_matches!(diff(&local, &peer).as_slice(), []);
@@ -752,56 +564,28 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &3, // Differs
-                end: &15,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &3, // Differs
-                end: &6,
-                hash: new_digest(43), // Differs
-            },
+            PageRange::new(
+                &3, // Differs
+                &15,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(
+                &3, // Differs
+                &6,
+                new_digest(43), // Differs
+            ),
             //
             // No page containing 2 at level 0
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         assert_matches!(
@@ -815,44 +599,20 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &3,
-                end: &15,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(
+                &3,
+                &15,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         assert_matches!(
@@ -866,44 +626,20 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let peer = vec![
-            PageRange {
-                start: &3,
-                end: &15,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(
+                &3,
+                &15,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         assert_matches!(diff(&local, &peer).as_slice(), []);
@@ -914,59 +650,27 @@ mod tests {
         enable_logging!();
 
         let peer = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(42), // Differs
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(
+                &2,
+                &15,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(
+                &2,
+                &6,
+                new_digest(42), // Differs
+            ),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         assert_matches!(
@@ -981,41 +685,19 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let mut peer = local.clone();
         let end = peer.last_mut().unwrap();
-        end.end = &16;
-        end.hash = new_digest(42);
+        *end = PageRange::new(end.start(), &16, new_digest(42));
 
         // Root hash differs to reflect differing child
-        peer[0].end = &16;
-        peer[0].hash = new_digest(42);
+        peer[0] = PageRange::new(peer[0].start(), &16, new_digest(42));
 
         assert_matches!(
             diff(&local, &peer).as_slice(),
@@ -1028,37 +710,17 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let mut peer = local.clone();
 
         // Root hash differs due to added key 8
-        peer[0].hash = new_digest(42);
+        peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(42));
 
         // Without the reduce_sync_range optimisation, this root inconsistency
         // would cause a fetch against the whole tree (start: 2, end: 15).
@@ -1081,40 +743,19 @@ mod tests {
         // It appears in the peer only.
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let mut peer = local.clone();
 
         // Root hash differs due to added key 8
-        peer[1].hash = new_digest(42);
-        peer[1].end = &7;
+        peer[1] = PageRange::new(peer[1].start(), &7, new_digest(42));
 
-        peer[0].hash = new_digest(42);
+        peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(42));
 
         assert_matches!(
             diff(&local, &peer).as_slice(),
@@ -1140,44 +781,23 @@ mod tests {
         // after, the page inconsistency for 2 is resolved via a second sync.
 
         let local = vec![
-            PageRange {
-                start: &2,
-                end: &15,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &2,
-                end: &6,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2,
-                end: &2,
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &5,
-                end: &5,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &15,
-                end: &15,
-                hash: new_digest(5),
-            },
+            PageRange::new(&2, &15, new_digest(1)),
+            PageRange::new(&2, &6, new_digest(2)),
+            PageRange::new(&2, &2, new_digest(3)),
+            PageRange::new(&5, &5, new_digest(4)),
+            PageRange::new(&15, &15, new_digest(5)),
         ];
 
         let mut peer = local.clone();
 
         // Extend key range of 1st child to 2-6 to 2-7
-        peer[1].hash = new_digest(42);
-        peer[1].end = &7;
+        peer[1] = PageRange::new(peer[1].start(), &7, new_digest(42));
 
         // Key 2 value change
-        peer[2].hash = new_digest(42);
+        peer[2] = PageRange::new(peer[2].start(), peer[2].end(), new_digest(42));
 
         // Root hash
-        peer[0].hash = new_digest(42);
+        peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(42));
 
         assert_matches!(
             diff(&local, &peer.clone()).as_slice(),
@@ -1187,9 +807,9 @@ mod tests {
         let mut local = peer.clone();
 
         // Only 2 should remain different - reset the hash.
-        local[2].hash = new_digest(3);
-        peer[1].hash = new_digest(2);
-        peer[0].hash = new_digest(1);
+        local[2] = PageRange::new(local[2].start(), local[2].end(), new_digest(3));
+        peer[1] = PageRange::new(peer[1].start(), peer[1].end(), new_digest(2));
+        peer[0] = PageRange::new(peer[0].start(), peer[0].end(), new_digest(1));
 
         // 2, 15 because the root page is inconsistent and there's no consistent
         // pages that shrink the range.
@@ -1209,58 +829,38 @@ mod tests {
         enable_logging!();
 
         let local = vec![
-            PageRange {
-                start: &0,
-                end: &17995215864353464453_usize,
-                hash: new_digest(1),
-            },
-            PageRange {
-                start: &0,
-                end: &1331283967702353742,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2425302987964992968,
-                end: &3632803506728089373, // Larger key range than peer
-                hash: new_digest(3),
-            },
-            PageRange {
-                start: &4706903583207578752, // Shorter key range than peer (missing first key)
-                end: &4707132771120484774,
-                hash: new_digest(4),
-            },
-            PageRange {
-                start: &17995215864353464453,
-                end: &17995215864353464453,
-                hash: new_digest(5),
-            },
+            PageRange::new(&0, &17995215864353464453_usize, new_digest(1)),
+            PageRange::new(&0, &1331283967702353742, new_digest(2)),
+            PageRange::new(
+                &2425302987964992968,
+                &3632803506728089373, // Larger key range than peer
+                new_digest(3),
+            ),
+            PageRange::new(
+                &4706903583207578752, // Shorter key range than peer (missing first key)
+                &4707132771120484774,
+                new_digest(4),
+            ),
+            PageRange::new(&17995215864353464453, &17995215864353464453, new_digest(5)),
         ];
         let peer = vec![
-            PageRange {
-                start: &0,
-                end: &17995215864353464453_usize,
-                hash: new_digest(11), // Differs
-            },
-            PageRange {
-                start: &0,
-                end: &1331283967702353742,
-                hash: new_digest(2),
-            },
-            PageRange {
-                start: &2425302987964992968,
-                end: &3541571342636567061,
-                hash: new_digest(13), // Differs
-            },
-            PageRange {
-                start: &3632803506728089373,
-                end: &4707132771120484774,
-                hash: new_digest(14), // Differs
-            },
-            PageRange {
-                start: &17995215864353464453,
-                end: &17995215864353464453,
-                hash: new_digest(5),
-            },
+            PageRange::new(
+                &0,
+                &17995215864353464453_usize,
+                new_digest(11), // Differs
+            ),
+            PageRange::new(&0, &1331283967702353742, new_digest(2)),
+            PageRange::new(
+                &2425302987964992968,
+                &3541571342636567061,
+                new_digest(13), // Differs
+            ),
+            PageRange::new(
+                &3632803506728089373,
+                &4707132771120484774,
+                new_digest(14), // Differs
+            ),
+            PageRange::new(&17995215864353464453, &17995215864353464453, new_digest(5)),
         ];
 
         assert_matches!(
@@ -1284,17 +884,8 @@ mod tests {
     fn test_diff_peer_bounds_larger_both_sides() {
         enable_logging!();
 
-        let local = vec![PageRange {
-            start: &2,
-            end: &15,
-            hash: new_digest(1),
-        }];
-
-        let peer = vec![PageRange {
-            start: &1,
-            end: &42,
-            hash: new_digest(1),
-        }];
+        let local = vec![PageRange::new(&2, &15, new_digest(1))];
+        let peer = vec![PageRange::new(&1, &42, new_digest(1))];
 
         assert_matches!(
             diff(&local, &peer).as_slice(),
@@ -1310,11 +901,7 @@ mod tests {
         enable_logging!();
 
         let peer = vec![];
-        let local = vec![PageRange {
-            start: &1,
-            end: &42,
-            hash: new_digest(1),
-        }];
+        let local = vec![PageRange::new(&1, &42, new_digest(1))];
 
         assert_matches!(diff(&local, &peer).as_slice(), []);
     }
@@ -1324,11 +911,7 @@ mod tests {
         enable_logging!();
 
         let local = vec![];
-        let peer = vec![PageRange {
-            start: &1,
-            end: &42,
-            hash: new_digest(1),
-        }];
+        let peer = vec![PageRange::new(&1, &42, new_digest(1))];
 
         assert_matches!(
             diff(&local, &peer).as_slice(),
