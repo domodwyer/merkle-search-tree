@@ -1237,7 +1237,7 @@ mod tests {
 
         let mut count = 0;
         for range in want {
-            for (k, v) in a2.key_range_iter(range.start..=range.end) {
+            for (k, v) in a2.key_range_iter(range.start()..=range.end()) {
                 to.upsert(k.clone(), *v);
                 count += 1;
             }
