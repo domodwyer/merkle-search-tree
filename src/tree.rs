@@ -58,7 +58,7 @@ type DefaultHasher = SipHasher;
 /// Any change to the underlying hash construction algorithm implemented in this
 /// crate that would cause existing hashes to no longer match will not occur
 /// without a breaking change major semver version bump once this crate reaches
-/// stability (>1.0.0).
+/// stability (>=1.0.0).
 ///
 /// # Lazy Tree Hash Generation
 ///
@@ -179,7 +179,12 @@ where
         self.root_hash.as_ref().unwrap()
     }
 
-    /// Serialise the key intervals covered by each [`Page`] within this tree.
+    /// Serialise the key interval and hash covering each [`Page`] within this
+    /// tree.
+    ///
+    /// Page hashes are generated on demand - this method returns [`None`] if
+    /// the tree needs rehashing (call [`MerkleSearchTree::root_hash()`] and
+    /// retry).
     ///
     /// Performs a pre-order traversal of all pages within this tree and emits a
     /// [`PageRange`] per page that covers the min/max key of the subtree at the

@@ -143,7 +143,8 @@ where
         // NOTE: changing the ordering of the hashed elements is a breaking
         // change.
         //
-        // This order may be changed only if releasing a new major version.
+        // This order may be changed only if releasing a new major version, as
+        // it invalidates existing hashes.
 
         // Hash all nodes & their child pages
         for n in &mut self.nodes {

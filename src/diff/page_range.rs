@@ -5,6 +5,13 @@ use crate::{digest::PageDigest, Page};
 /// A serialised representation of the range of keys contained within the
 /// sub-tree rooted at a given [`Page`], and the associated [`PageDigest`].
 ///
+/// A [`PageRange`] contains all the information needed to perform a tree
+/// difference calculation, used as the input to the [`diff()`] function.
+///
+/// The contents of this type can be serialised and transmitted over the
+/// network, and reconstructed by the receiver by calling [`PageRange::new()`]
+/// with the serialised values.
+///
 /// # Borrowed vs. Owned
 ///
 /// A [`PageRange`] borrows the keys from the tree to avoid unnecessary clones,

@@ -58,16 +58,48 @@ impl<'a, K> DiffRange<'a, K> {
     }
 }
 
-/// Compute the difference between `local` and `peer`, returning the
+/// Compute the difference between `local` and `peer`, returning the set of
 /// [`DiffRange`] covering the inconsistent key ranges found in `peer`.
+///
+/// ```rust
+/// use merkle_search_tree::{MerkleSearchTree, diff::diff};
+///
+/// // Initialise a "peer" tree.
+/// let mut node_a = MerkleSearchTree::default();
+/// node_a.upsert(&"bananas", &42);
+/// node_a.upsert(&"plátanos", &42);
+///
+/// // Initialise the "local" tree with differing keys
+/// let mut node_b = MerkleSearchTree::default();
+/// node_b.upsert(&"donkey", &42);
+///
+/// // Generate the tree hashes before serialising the page ranges
+/// node_a.root_hash();
+/// node_b.root_hash();
+///
+/// // Generate the tree page bounds & hashes, and feed into the diff function
+/// let diff_range = diff(
+///     node_b.serialise_page_ranges().unwrap().into_iter(),
+///     node_a.serialise_page_ranges().unwrap().into_iter(),
+/// );
+///
+/// // The diff_range contains all the inclusive key intervals the "local" tree
+/// // should fetch from the "peer" tree to converge.
+/// assert_matches::assert_matches!(diff_range.as_slice(), [range] => {
+///     assert_eq!(range.start(), &"bananas");
+///     assert_eq!(range.end(), &"plátanos");
+/// });
+/// ```
 ///
 /// # State Convergence
 ///
-/// To converge the state of the two trees, the returned key ranges should be
-/// requested from `peer` and used to update the state of `local`.
+/// To converge the state of the two trees, the key ranges in the returned
+/// [`DiffRange`] instances should be requested from `peer` and used to update
+/// the state of `local`.
 ///
-/// If `local` contains all the keys in `peer`, or the two trees are identical,
-/// no [`DiffRange`] intervals are returned.
+/// If `local` is a superset of `peer` (contains all the keys in `peer` and the
+/// values are consistent), or the two trees are identical, no [`DiffRange`]
+/// intervals are returned.
 ///
 /// # Optimistic Page Bounds Fetching
 ///
@@ -170,10 +202,7 @@ where
     true
 }
 
-#[cfg_attr(
-    any(test, feature = "tracing"),
-    tracing::instrument(skip(peer, local),)
-)]
+#[cfg_attr(any(test, feature = "tracing"), tracing::instrument(skip(peer, local)))]
 fn recurse_diff<'p, 'a: 'p, T, U, K>(
     subtree_root: &PageRange<'p, K>,
     peer: &mut Peekable<U>,
