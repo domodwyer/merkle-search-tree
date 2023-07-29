@@ -53,13 +53,11 @@ impl<'a, K> Clone for PageRange<'a, K> {
 }
 
 impl<'a, const N: usize, K> From<&'a Page<N, K>> for PageRange<'a, K> {
+    #[inline(always)]
     fn from(page: &'a Page<N, K>) -> Self {
         PageRange {
-            start: page.min_key(),
-            end: page
-                .high_page()
-                .map(|v| v.max_key())
-                .unwrap_or_else(|| page.max_key()),
+            start: page.min_subtree_key(),
+            end: page.max_subtree_key(),
             hash: page
                 .hash()
                 .expect("page visitor requires prior hash regeneration")

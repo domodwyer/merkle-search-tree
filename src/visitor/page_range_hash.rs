@@ -24,16 +24,7 @@ where
     }
 
     fn visit_page(&mut self, page: &'a Page<N, K>, _high_page: bool) -> bool {
-        if !page.nodes().is_empty() {
-            let p = PageRange::new(
-                get_min(page),
-                get_max(page),
-                page.hash()
-                    .expect("page hash must be calculated before serialising")
-                    .clone(),
-            );
-            self.out.push(p);
-        }
+        self.out.push(PageRange::from(page));
         true
     }
 }
@@ -42,25 +33,6 @@ impl<'a, K> PageRangeHashVisitor<'a, K> {
     pub(crate) fn finalise(self) -> Vec<PageRange<'a, K>> {
         self.out
     }
-}
-
-/// Descend down the minimum (left most) path (if any) and return the minimum
-/// key in the subtree rooted at `p`.
-fn get_min<const N: usize, K>(p: &'_ Page<N, K>) -> &'_ K {
-    let v = p.nodes().get(0).and_then(|v| v.lt_pointer());
-    if let Some(v) = v {
-        return get_min(v);
-    }
-
-    p.min_key()
-}
-
-/// Chase the high page pointers to the maximum page value of the subtree rooted
-/// at `p`.
-fn get_max<const N: usize, K>(p: &'_ Page<N, K>) -> &'_ K {
-    p.high_page()
-        .map(|v| get_max(v))
-        .unwrap_or_else(|| p.max_key())
 }
 
 #[cfg(test)]

@@ -110,20 +110,52 @@ impl<const N: usize, K> Page<N, K> {
 
     /// Return the minimum key stored in this page.
     ///
+    /// This is an `O(1)` operation.
+    ///
     /// # Panics
     ///
     /// Panics if there are no nodes in this page.
+    #[inline]
     pub(crate) fn min_key(&self) -> &K {
         self.nodes.first().unwrap().key()
     }
 
     /// Return the maximum key stored in this page.
     ///
+    /// This is an `O(1)` operation.
+    ///
     /// # Panics
     ///
     /// Panics if there are no nodes in this page.
+    #[inline]
     pub(crate) fn max_key(&self) -> &K {
         self.nodes.last().unwrap().key()
+    }
+
+    /// Descend down the minimum (left most) path (if any) and return the
+    /// minimum key in the subtree rooted at `p`.
+    ///
+    /// This is an `O(logN)` operation.
+    #[inline]
+    pub(crate) fn min_subtree_key(&self) -> &K {
+        // This is mildly faster than the iterator chain approach.
+        let v = self.nodes().get(0).and_then(|v| v.lt_pointer());
+        if let Some(v) = v {
+            return v.min_subtree_key();
+        }
+
+        self.min_key()
+    }
+
+    /// Chase the high page pointers to the maximum page value of the subtree
+    /// rooted at `p`.
+    ///
+    /// This is an `O(logN)` operation.
+    #[inline]
+    pub(crate) fn max_subtree_key(&self) -> &K {
+        self.high_page()
+            .map(|v| v.max_subtree_key())
+            .unwrap_or_else(|| self.max_key())
     }
 }
 

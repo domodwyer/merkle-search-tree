@@ -241,6 +241,11 @@ where
     {
         // The tree hash must be up-to-date.
         self.root_hash_cached()?;
+
+        if self.root.nodes().is_empty() {
+            return Some(vec![]);
+        }
+
         let mut v = PageRangeHashVisitor::default();
         self.root.in_order_traversal(&mut v, false);
         Some(v.finalise())
