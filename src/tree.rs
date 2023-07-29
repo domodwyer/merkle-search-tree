@@ -1,7 +1,4 @@
-use std::{
-    fmt::{Debug, Display},
-    marker::PhantomData,
-};
+use std::{fmt::Debug, marker::PhantomData};
 
 use siphasher::sip128::SipHasher24;
 
@@ -124,10 +121,7 @@ impl<K, V> Default for MerkleSearchTree<K, V> {
     }
 }
 
-impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
-where
-    K: Clone,
-{
+impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// Initialise a new [`MerkleSearchTree`] using the provided [`Hasher`] of
     /// keys & values.
     pub fn new_with_hasher(hasher: H) -> Self {
@@ -139,9 +133,7 @@ where
             _value_type: PhantomData,
         }
     }
-}
 
-impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// Return the precomputed root hash, if any.
     ///
     /// This method never performs any hashing - if there's no precomputed hash
@@ -152,6 +144,17 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     #[inline]
     pub fn root_hash_cached(&self) -> Option<&RootHash> {
         self.root_hash.as_ref()
+    }
+
+    /// Perform a depth-first, in-order traversal, yielding each [`Page`] and
+    /// [`Node`] to `visitor`.
+    ///
+    /// An in-order traversal yields nodes in key order, from min to max.
+    pub fn in_order_traversal<'a, T>(&'a self, visitor: &mut T)
+    where
+        T: Visitor<'a, N, K>,
+    {
+        self.root.in_order_traversal(visitor, false);
     }
 }
 
@@ -272,22 +275,6 @@ where
 
             insert_intermediate_page(&mut &mut self.root, key.clone(), level, value_hash);
         }
-    }
-}
-
-impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
-where
-    K: PartialOrd + Display,
-{
-    /// Perform a depth-first, in-order traversal, yielding each [`Page`] and
-    /// [`Node`] to `visitor`.
-    ///
-    /// An in-order traversal yields nodes in key order, from min to max.
-    pub fn in_order_traversal<'a, T>(&'a self, visitor: &mut T)
-    where
-        T: Visitor<'a, N, K>,
-    {
-        self.root.in_order_traversal(visitor, false);
     }
 }
 
