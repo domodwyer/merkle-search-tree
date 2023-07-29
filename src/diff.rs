@@ -1253,6 +1253,22 @@ mod tests {
             // Ensure the nodes are now consistent.
             assert_eq!(a, b);
         }
+
+        /// Invariant: page ranges yielded from an [`OwnedPageRange`] are
+        /// identical to those from the borrowed [`PageRange`] equivalent.
+        #[test]
+        fn prop_owned_page_range_equivalent(mut a in arbitrary_node()) {
+            enable_logging!();
+
+            let _ = a.root_hash();
+            let a_ref = a.serialise_page_ranges().unwrap();
+            let a_owned = PageRangeSnapshot::from(a_ref.clone());
+
+            let a_owned_iter = a_owned.iter();
+            let a_ref_iter = a_ref.iter().cloned();
+
+            assert!(a_owned_iter.eq(a_ref_iter));
+        }
     }
 
     /// Perform a single sync round, pulling differences from a into b.
