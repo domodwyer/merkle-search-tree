@@ -4,6 +4,18 @@ use crate::{digest::PageDigest, Page};
 
 /// A serialised representation of the range of keys contained within the
 /// sub-tree rooted at a given [`Page`], and the associated [`PageDigest`].
+///
+/// # Borrowed vs. Owned
+///
+/// A [`PageRange`] borrows the keys from the tree to avoid unnecessary clones,
+/// retaining an immutable reference to the tree.
+///
+/// If an owned / long-lived set of [`PageRange`] is desired (avoiding the
+/// immutable reference to the tree), generate a [`PageRangeSnapshot`] from the
+/// set of [`PageRange`].
+///
+/// [`diff()`]: crate::diff::diff
+/// [`PageRangeSnapshot`]: crate::diff::PageRangeSnapshot
 #[derive(Debug, PartialEq)]
 pub struct PageRange<'a, K> {
     /// The inclusive start & end key bounds of this range.
@@ -92,5 +104,11 @@ impl<'a, K> PageRange<'a, K> {
     /// page and all pages within the sub-tree rooted at it.
     pub fn hash(&self) -> &PageDigest {
         &self.hash
+    }
+
+    /// Consume this [`PageRange`], returning the [`PageDigest`] that covers the
+    /// subtree rooted at this page.
+    pub fn into_hash(self) -> PageDigest {
+        self.hash
     }
 }

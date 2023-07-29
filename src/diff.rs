@@ -2,10 +2,13 @@
 
 mod diff_builder;
 mod page_range;
+mod page_range_snapshot;
 mod range_list;
+
 use std::{fmt::Debug, iter::Peekable};
 
 pub use page_range::*;
+pub use page_range_snapshot::*;
 
 use crate::diff::diff_builder::DiffListBuilder;
 

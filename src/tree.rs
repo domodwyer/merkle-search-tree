@@ -187,6 +187,46 @@ where
     ///
     /// The first page is the tree root, and as such has a key min/max that
     /// equals the min/max of the keys stored within this tree.
+    ///
+    /// # Reference vs. Owned
+    ///
+    /// This method borrows the underlying keys within the tree - this avoids
+    /// cloning the keys that form the page bounds when generating the
+    /// [`PageRange`] to maximise performance, however this also prevents the
+    /// caller from mutating the tree whilst holding onto the serialised pages
+    /// (an immutable reference to the tree).
+    ///
+    /// If the key type (`K`) implements [`Clone`], a set of owned serialised
+    /// pages that do not borrow from the tree can be created by constructing a
+    /// [`PageRangeSnapshot`] from the returned [`PageRange`] array:
+    ///
+    /// ```
+    /// # use merkle_search_tree::{*, diff::*};
+    /// #
+    /// let mut t = MerkleSearchTree::default();
+    /// t.upsert(&"bananas", &42);
+    ///
+    /// // Rehash the tree before generating the page ranges
+    /// let _ = t.root_hash();
+    ///
+    /// // Generate the hashes & page ranges
+    /// let ranges = t.serialise_page_ranges().unwrap();
+    ///
+    /// // At this point, attempting to insert into the tree fails because the
+    /// // tree is already borrowed as immutable.
+    /// //
+    /// // Instead clone all the keys and generate a snapshot:
+    /// let snap = PageRangeSnapshot::from(ranges);
+    ///
+    /// // And the tree is free to be mutated while `snap` exists!
+    /// t.upsert(&"plátanos", &42);
+    ///
+    /// // The `snap` yields `PageRange` for iteration:
+    /// assert_eq!(diff(snap.iter(), snap.iter()), vec![]);
+    /// ```
+    ///
+    /// [`PageRangeSnapshot`]: crate::diff::PageRangeSnapshot
+    #[inline]
     pub fn serialise_page_ranges(&self) -> Option<Vec<PageRange<'_, K>>>
     where
         K: PartialOrd,
