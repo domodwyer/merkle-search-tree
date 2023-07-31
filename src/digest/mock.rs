@@ -3,7 +3,7 @@ use std::{fmt::Display, iter};
 use super::*;
 
 #[derive(Debug, Clone)]
-pub struct LevelKey<T>(T, u8);
+pub(crate) struct LevelKey<T>(T, u8);
 
 impl<T> PartialEq for LevelKey<T>
 where
@@ -33,7 +33,7 @@ where
 }
 
 impl<T> LevelKey<T> {
-    pub fn new(key: T, level: u8) -> Self
+    pub(crate) fn new(key: T, level: u8) -> Self
     where
         T: Display,
     {
@@ -42,7 +42,7 @@ impl<T> LevelKey<T> {
 }
 
 #[derive(Debug, Default)]
-pub struct MockHasher;
+pub(crate) struct MockHasher;
 
 impl<T> Hasher<32, LevelKey<T>> for MockHasher
 where

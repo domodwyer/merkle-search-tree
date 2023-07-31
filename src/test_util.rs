@@ -1,3 +1,5 @@
+#![allow(unreachable_pub)] // Gated by mod declaration
+
 use std::{collections::BTreeMap, fmt::Display, ops::RangeInclusive};
 
 use crate::{diff::PageRange, MerkleSearchTree};

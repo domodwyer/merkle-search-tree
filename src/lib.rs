@@ -11,6 +11,7 @@
     missing_copy_implementations,
     missing_debug_implementations,
     unused_crate_dependencies,
+    unreachable_pub,
     missing_docs
 )]
 
