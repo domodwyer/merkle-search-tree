@@ -1,12 +1,14 @@
 mod diff;
 mod generate_root;
 mod insert;
+mod node_iter;
 mod serialise_pages;
 
 use criterion::{criterion_group, criterion_main};
 use diff::bench_diff;
 use generate_root::bench_generate_root;
 use insert::bench_insert;
+use node_iter::bench_node_iter;
 use serialise_pages::bench_serialise_pages;
 
 const ROW_COUNTS: &[usize] = &[1, 100, 1_000, 10_000, 100_000];
@@ -18,6 +20,7 @@ criterion_group!(
     bench_generate_root,
     bench_diff,
     bench_serialise_pages,
+    bench_node_iter,
 );
 
 /// Linear-feedback shift register based PRNG.
