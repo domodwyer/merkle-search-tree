@@ -45,6 +45,7 @@ mod test_assert;
 pub mod diff;
 pub mod digest;
 mod node;
+mod node_iter;
 mod page;
 mod tree;
 pub mod visitor;

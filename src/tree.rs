@@ -6,6 +6,7 @@ use crate::{
     diff::PageRange,
     digest::{self, siphash::SipHasher, Hasher, RootHash, ValueDigest},
     node::Node,
+    node_iter::NodeIter,
     page::{insert_intermediate_page, Page},
     visitor::{page_range_hash::PageRangeHashVisitor, Visitor},
 };
@@ -156,6 +157,35 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     {
         self.root.in_order_traversal(visitor, false);
     }
+
+    /// Iterate over all [`Node`] in the tree in ascending key order.
+    ///
+    /// This method can be used to inspect the keys stored in the tree:
+    ///
+    /// ```
+    /// # use merkle_search_tree::*;
+    /// #
+    /// let mut t = MerkleSearchTree::default();
+    /// t.upsert(&"bananas1", &42);
+    /// t.upsert(&"bananas3", &42);
+    /// t.upsert(&"bananas4", &42);
+    /// t.upsert(&"bananas2", &42);
+    ///
+    /// // Collect the keys within the tree
+    /// let keys = t.node_iter().map(|v| *v.key()).collect::<Vec<_>>();
+    ///
+    /// // Nodes are yield in ascending key order:
+    /// assert_eq!(
+    ///     keys.as_slice(),
+    ///     ["bananas1", "bananas2", "bananas3", "bananas4",]
+    /// )
+    /// ```
+    pub fn node_iter(&self) -> impl Iterator<Item = &'_ Node<N, K>>
+    where
+        K: Debug,
+    {
+        NodeIter::new(&self.root)
+    }
 }
 
 impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
@@ -285,7 +315,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashSet, hash::Hasher as _};
+    use std::{
+        collections::{BTreeSet, HashSet},
+        hash::Hasher as _,
+    };
 
     use proptest::prelude::*;
     use siphasher::sip128::Hasher128;
@@ -734,6 +767,29 @@ mod tests {
             let mut asserter = InvariantAssertCount::new(InvariantAssertOrder::new(NopVisitor::default()));
             b.in_order_traversal(&mut asserter);
             asserter.unwrap_count(unique.len());
+        }
+
+        // Invariant: the node iter yields every node in the tree in ascending
+        // key order.
+        #[test]
+        fn prop_node_iter(keys in proptest::collection::vec(any::<u64>(), 0..64)) {
+            let mut t = MerkleSearchTree::default();
+
+            let mut inserted = BTreeSet::new();
+            for key in keys {
+                t.upsert(&key, &key);
+                inserted.insert(key);
+            }
+
+            // Use the node iter to visit all nodes, preserving the key order in
+            // the returned iterator.
+            let got = t
+                .node_iter()
+                .map(|v| *v.key());
+
+            // The iterator must yield all keys in the same order as a (sorted!)
+            // BTreeSet to satisfy the invariant.
+            assert!(inserted.into_iter().eq(got));
         }
     }
 
