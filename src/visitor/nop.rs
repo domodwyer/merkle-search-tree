@@ -1,6 +1,5 @@
-use crate::{node::Node, page::Page};
-
 use super::Visitor;
+use crate::{node::Node, page::Page};
 
 /// A no-op [`Visitor`] implementation - it does nothing!
 #[derive(Debug, Default)]

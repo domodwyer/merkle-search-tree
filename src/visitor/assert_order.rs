@@ -1,8 +1,7 @@
 use std::fmt::Debug;
 
-use crate::{node::Node, page::Page};
-
 use super::Visitor;
+use crate::{node::Node, page::Page};
 
 /// An internal visitor used to assert ordering invariants during depth-first
 /// tree traversal.
@@ -12,7 +11,6 @@ use super::Visitor;
 ///   * Key traversal order (strictly increasing keys)
 ///   * Page levels (decrease when traversing down, increasing up)
 ///   * High pages are never empty
-///
 #[derive(Debug)]
 pub(crate) struct InvariantAssertOrder<'a, const N: usize, T, K> {
     inner: T,

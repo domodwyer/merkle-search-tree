@@ -449,13 +449,10 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
 {
     // Terminology:
     //
-    //     * parent_page:
-    //          top of the stack, parent of child_page
-    //     * intermediate/new page:
-    //          intermediate page with level between parent_page and child_page to
-    //          be inserted between them.
-    //     * child_page:
-    //          the lower page, child of parent_page
+    //     * parent_page: top of the stack, parent of child_page
+    //     * intermediate/new page: intermediate page with level between parent_page
+    //       and child_page to be inserted between them.
+    //     * child_page: the lower page, child of parent_page
     //
 
     // The child page asked this page to insert a new intermediate page at this

@@ -1,6 +1,5 @@
-use crate::{diff::PageRange, Node, Page};
-
 use super::Visitor;
+use crate::{diff::PageRange, Node, Page};
 
 /// Record the page range & hashes for the visited pages.
 #[derive(Debug)]
@@ -68,12 +67,11 @@ fn get_max<const N: usize, K>(p: &'_ Page<N, K>) -> &'_ K {
 mod tests {
     use siphasher::sip128::SipHasher24;
 
+    use super::*;
     use crate::{
         digest::{Digest, ValueDigest},
         test_util::IntKey,
     };
-
-    use super::*;
 
     const MOCK_VALUE: ValueDigest<32> = ValueDigest::new(Digest::new([0; 32]));
 

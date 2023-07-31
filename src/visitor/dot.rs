@@ -6,9 +6,8 @@
 
 use std::fmt::{Display, Write};
 
-use crate::{node::Node, page::Page};
-
 use super::Visitor;
+use crate::{node::Node, page::Page};
 
 #[derive(Debug, Clone)]
 enum Parent {
@@ -16,8 +15,8 @@ enum Parent {
     Page(String, usize),
 }
 
-/// Serialise a tree into [Graphviz DOT language][dot] output to be rendered as a
-/// diagram.
+/// Serialise a tree into [Graphviz DOT language][dot] output to be rendered as
+/// a diagram.
 ///
 /// [dot]: https://graphviz.org/doc/info/lang.html
 #[derive(Debug)]
@@ -27,7 +26,8 @@ pub struct DotVisitor {
     /// Total number of pages visited so far (1-based)
     page_count: usize,
 
-    /// The stack of parent node keys / page records, most recently visited last.
+    /// The stack of parent node keys / page records, most recently visited
+    /// last.
     link_stack: Vec<Parent>,
 
     /// A set of per-page buffers, populated incrementally and merged into `buf`
@@ -111,7 +111,8 @@ where
             // Link the high page to the referenced page
             writeln!(
                 buf,
-                "\tpage_{}:high_page -> page_{}:head [fontcolor=red color=red label=\"high page\"];",
+                "\tpage_{}:high_page -> page_{}:head [fontcolor=red color=red label=\"high \
+                 page\"];",
                 me,
                 self.page_count + 1,
             )
@@ -188,6 +189,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         assert_tree,
         digest::{
@@ -196,8 +198,6 @@ mod tests {
         },
         MerkleSearchTree,
     };
-
-    use super::*;
 
     const MOCK_VALUE: ValueDigest<32> = ValueDigest::new(Digest::new([0; 32]));
 

@@ -253,6 +253,7 @@ mod tests {
     use proptest::prelude::*;
     use siphasher::sip128::Hasher128;
 
+    use super::*;
     use crate::{
         assert_tree,
         digest::{
@@ -264,8 +265,6 @@ mod tests {
             assert_count::InvariantAssertCount, assert_order::InvariantAssertOrder, nop::NopVisitor,
         },
     };
-
-    use super::*;
 
     /// A hash implementation that does not rely on the stdlib Hash trait, and
     /// therefore produces stable hashes across rust version changes /

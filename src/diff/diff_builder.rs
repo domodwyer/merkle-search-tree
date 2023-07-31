@@ -108,9 +108,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use assert_matches::assert_matches;
+
+    use super::*;
 
     #[test]
     fn test_convergence_identical_bounds() {

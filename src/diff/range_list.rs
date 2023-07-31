@@ -97,9 +97,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use proptest::prelude::*;
+
+    use super::*;
 
     macro_rules! test_range_list_dedupe {
 		(

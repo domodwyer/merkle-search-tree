@@ -1,6 +1,5 @@
-use crate::{node::Node, page::Page};
-
 use super::Visitor;
+use crate::{node::Node, page::Page};
 
 /// Internal visitor used to count and assert the number of key/value pairs in a
 /// tree during traversal.
@@ -58,9 +57,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{visitor::nop::NopVisitor, MerkleSearchTree};
-
     use super::*;
+    use crate::{visitor::nop::NopVisitor, MerkleSearchTree};
 
     #[test]
     fn test_count() {

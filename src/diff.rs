@@ -474,12 +474,11 @@ mod tests {
     use assert_matches::assert_matches;
     use proptest::prelude::*;
 
+    use super::*;
     use crate::{
         digest::Digest,
         test_util::{IntKey, Node},
     };
-
-    use super::*;
 
     const fn new_digest(lsb: u8) -> PageDigest {
         PageDigest::new(Digest::new([
@@ -733,7 +732,6 @@ mod tests {
             },
             //
             // No page containing 2 at level 0
-            //
             PageRange {
                 start: &5,
                 end: &5,
@@ -766,7 +764,6 @@ mod tests {
             },
             //
             // No page containing 2 at level 0
-            //
             PageRange {
                 start: &5,
                 end: &5,
