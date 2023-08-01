@@ -64,17 +64,17 @@ mod tests {
     fn test_count() {
         let mut t = MerkleSearchTree::default();
 
-        t.upsert(&"I", &"bananas");
-        t.upsert(&"K", &"bananas");
-        t.upsert(&"A", &"bananas");
-        t.upsert(&"E", &"bananas");
-        t.upsert(&"J", &"bananas");
-        t.upsert(&"B", &"bananas");
-        t.upsert(&"C", &"bananas");
-        t.upsert(&"D", &"bananas");
-        t.upsert(&"F", &"bananas");
-        t.upsert(&"G", &"bananas");
-        t.upsert(&"H", &"bananas");
+        t.upsert("I", &"bananas");
+        t.upsert("K", &"bananas");
+        t.upsert("A", &"bananas");
+        t.upsert("E", &"bananas");
+        t.upsert("J", &"bananas");
+        t.upsert("B", &"bananas");
+        t.upsert("C", &"bananas");
+        t.upsert("D", &"bananas");
+        t.upsert("F", &"bananas");
+        t.upsert("G", &"bananas");
+        t.upsert("H", &"bananas");
 
         let mut counter = InvariantAssertCount::new(NopVisitor::default());
         t.in_order_traversal(&mut counter);

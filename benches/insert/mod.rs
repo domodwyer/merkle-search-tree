@@ -62,7 +62,7 @@ fn insert_param<F, T>(
             |values| {
                 let mut t = MerkleSearchTree::default();
                 for v in values {
-                    t.upsert(&v, &42);
+                    t.upsert(v, &42);
                 }
             },
             BatchSize::PerIteration,

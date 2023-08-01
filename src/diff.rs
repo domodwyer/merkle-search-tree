@@ -66,12 +66,12 @@ impl<'a, K> DiffRange<'a, K> {
 ///
 /// // Initialise a "peer" tree.
 /// let mut node_a = MerkleSearchTree::default();
-/// node_a.upsert(&"bananas", &42);
-/// node_a.upsert(&"plátanos", &42);
+/// node_a.upsert("bananas", &42);
+/// node_a.upsert("plátanos", &42);
 ///
 /// // Initialise the "local" tree with differing keys
 /// let mut node_b = MerkleSearchTree::default();
-/// node_b.upsert(&"donkey", &42);
+/// node_b.upsert("donkey", &42);
 ///
 /// // Generate the tree hashes before serialising the page ranges
 /// node_a.root_hash();

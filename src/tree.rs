@@ -9,6 +9,7 @@ use crate::{
     node_iter::NodeIter,
     page::{insert_intermediate_page, Page},
     visitor::{page_range_hash::PageRangeHashVisitor, Visitor},
+    UpsertResult,
 };
 
 /// An alias for the default hash implementation.
@@ -77,15 +78,15 @@ type DefaultHasher = SipHasher;
 /// use merkle_search_tree::MerkleSearchTree;
 ///
 /// let mut t = MerkleSearchTree::default();
-/// t.upsert(&"bananas", &"great");
-/// t.upsert(&"plátano", &"muy bien");
+/// t.upsert("bananas", &"great");
+/// t.upsert("plátano", &"muy bien");
 ///
 /// // Obtain a root hash / merkle proof covering all the tree data
 /// let hash_1 = t.root_hash().to_owned();
 /// println!("{:?}", hash_1.as_ref());
 ///
 /// // Modify the MST, reflecting the new value of an existing key
-/// t.upsert(&"bananas", &"amazing");
+/// t.upsert("bananas", &"amazing");
 ///
 /// // Obtain an updated root hash
 /// let hash_2 = t.root_hash().to_owned();
@@ -166,10 +167,10 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// # use merkle_search_tree::*;
     /// #
     /// let mut t = MerkleSearchTree::default();
-    /// t.upsert(&"bananas1", &42);
-    /// t.upsert(&"bananas3", &42);
-    /// t.upsert(&"bananas4", &42);
-    /// t.upsert(&"bananas2", &42);
+    /// t.upsert("bananas1", &42);
+    /// t.upsert("bananas3", &42);
+    /// t.upsert("bananas4", &42);
+    /// t.upsert("bananas2", &42);
     ///
     /// // Collect the keys within the tree
     /// let keys = t.node_iter().map(|v| *v.key()).collect::<Vec<_>>();
@@ -242,7 +243,7 @@ where
     /// # use merkle_search_tree::{*, diff::*};
     /// #
     /// let mut t = MerkleSearchTree::default();
-    /// t.upsert(&"bananas", &42);
+    /// t.upsert("bananas", &42);
     ///
     /// // Rehash the tree before generating the page ranges
     /// let _ = t.root_hash();
@@ -257,7 +258,7 @@ where
     /// let snap = PageRangeSnapshot::from(ranges);
     ///
     /// // And the tree is free to be mutated while `snap` exists!
-    /// t.upsert(&"plátanos", &42);
+    /// t.upsert("plátanos", &42);
     ///
     /// // The `snap` yields `PageRange` for iteration:
     /// assert_eq!(diff(snap.iter(), snap.iter()), vec![]);
@@ -284,7 +285,7 @@ where
 
 impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N>
 where
-    K: PartialOrd + Clone,
+    K: PartialOrd,
     H: Hasher<N, K> + Hasher<N, V>,
 {
     /// Add or update the value for `key`.
@@ -292,23 +293,25 @@ where
     /// This method invalidates the cached, precomputed root hash value, if any
     /// (even if the value is not modified).
     #[inline]
-    pub fn upsert(&mut self, key: &'_ K, value: &'_ V) {
+    pub fn upsert(&mut self, key: K, value: &'_ V) {
         let value_hash = ValueDigest::new(self.hasher.hash(value));
-        let level = digest::level(&self.hasher.hash(key));
+        let level = digest::level(&self.hasher.hash(&key));
 
         // Invalidate the root hash - it always changes when a key is upserted.
         self.root_hash = None;
 
-        if !self.root.upsert(key, level, value_hash.clone()) {
+        if let UpsertResult::InsertIntermediate(key) =
+            self.root.upsert(key, level, value_hash.clone())
+        {
             // As an optimisation and simplification, if the current root is
             // empty, simply replace it with the new root.
             if self.root.nodes().is_empty() {
-                let node = Node::new(key.clone(), value_hash, None);
+                let node = Node::new(key, value_hash, None);
                 self.root = Page::new(level, vec![node]);
                 return;
             }
 
-            insert_intermediate_page(&mut &mut self.root, key.clone(), level, value_hash);
+            insert_intermediate_page(&mut &mut self.root, key, level, value_hash);
         }
     }
 }
@@ -359,7 +362,7 @@ mod tests {
         let mut t = MerkleSearchTree::new_with_hasher(FixtureHasher::default());
 
         for i in 0..1000 {
-            t.upsert(&IntKey::new(i), &i);
+            t.upsert(IntKey::new(i), &i);
         }
 
         // This hash ensures that any changes to this construction do not result
@@ -397,7 +400,7 @@ mod tests {
                     let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
 					$(
-						t.upsert(&$key, $value);
+						t.upsert($key, $value);
 					)*
 
                     assert_tree!(t)
@@ -668,11 +671,11 @@ mod tests {
             let mut unique = HashSet::new();
             for key in a_values {
                 if unique.insert(key) {
-                    a.upsert(&IntKey::new(key), &"bananas");
+                    a.upsert(IntKey::new(key), &"bananas");
                 }
             }
             for key in b_values {
-                b.upsert(&IntKey::new(key), &"bananas");
+                b.upsert(IntKey::new(key), &"bananas");
             }
 
             assert_node_equal(&mut a, &mut b);
@@ -697,7 +700,7 @@ mod tests {
             for key in keys {
                 if unique.insert(key) {
                     want_len += 1;
-                    t.upsert(&IntKey::new(key), &"bananas");
+                    t.upsert(IntKey::new(key), &"bananas");
                 }
             }
 
@@ -730,14 +733,14 @@ mod tests {
                 }
 
                 // Add the key to tree A
-                a.upsert(&IntKey::new(key), &"bananas");
+                a.upsert(IntKey::new(key), &"bananas");
                 assert_eq!(a.root_hash_cached(), None);
 
                 // The trees have now diverged
                 assert_node_not_equal(&mut a, &mut b);
 
                 // Add the key to tree B
-                b.upsert(&IntKey::new(key), &"bananas");
+                b.upsert(IntKey::new(key), &"bananas");
                 assert_eq!(b.root_hash_cached(), None);
 
                 // And now the tees have converged
@@ -746,14 +749,14 @@ mod tests {
 
             // Update a value for an existing key
             if let Some(key) = last_entry {
-                 b.upsert(&IntKey::new(key), &"platanos");
+                 b.upsert(IntKey::new(key), &"platanos");
                  assert_eq!(b.root_hash_cached(), None);
 
                  // The trees diverge
                 assert_node_not_equal(&mut a, &mut b);
 
                  // And converge once again
-                 a.upsert(&IntKey::new(key), &"platanos");
+                 a.upsert(IntKey::new(key), &"platanos");
                  assert_eq!(a.root_hash_cached(), None);
 
                 // And now the tees have converged
@@ -777,7 +780,7 @@ mod tests {
 
             let mut inserted = BTreeSet::new();
             for key in keys {
-                t.upsert(&key, &key);
+                t.upsert(key, &key);
                 inserted.insert(key);
             }
 

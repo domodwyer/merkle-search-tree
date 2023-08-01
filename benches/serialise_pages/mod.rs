@@ -30,7 +30,7 @@ fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize) {
     let mut rand = Lfsr::default();
     let mut t = MerkleSearchTree::default();
     for _i in 0..n_values {
-        t.upsert(&rand.next().to_string(), &42_usize);
+        t.upsert(rand.next().to_string(), &42_usize);
     }
 
     let _ = t.root_hash();

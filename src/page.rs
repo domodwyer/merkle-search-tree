@@ -8,6 +8,15 @@ use crate::{
     visitor::Visitor,
 };
 
+#[derive(Debug)]
+pub(crate) enum UpsertResult<K> {
+    /// The key & value hash were successfully upserted.
+    Complete,
+
+    /// An intermediate page must be inserted between the caller and the callee.
+    InsertIntermediate(K),
+}
+
 /// A group of [`Node`] instances at the same location within the tree.
 ///
 /// A page within an MST is a probabilistically sized structure, with varying
@@ -207,7 +216,7 @@ where
 
 impl<const N: usize, K> Page<N, K>
 where
-    K: PartialOrd + Clone,
+    K: PartialOrd,
 {
     /// Insert or update the value hash of `key`, setting it to `value`, found
     /// at tree `level`.
@@ -215,7 +224,7 @@ where
     /// Returns true if the key was found, or false otherwise.
     ///
     /// If the key is found/modified, the cached page hash is invalidated.
-    pub(crate) fn upsert(&mut self, key: &K, level: u8, value: ValueDigest<N>) -> bool {
+    pub(crate) fn upsert(&mut self, key: K, level: u8, value: ValueDigest<N>) -> UpsertResult<K> {
         match level.cmp(&self.level) {
             // Level is less than this page's level - descend down the tree.
             Ordering::Less => {
@@ -228,19 +237,21 @@ where
                 // into.
                 //
                 // Otherwise insert this node into the high page.
-                let ptr = self.nodes.partition_point(|v| *key > *v.key());
+                let ptr = self.nodes.partition_point(|v| key > *v.key());
 
                 let page = match self.nodes.get_mut(ptr) {
                     Some(v) => {
-                        debug_assert!(v.key() > key);
+                        debug_assert!(*v.key() > key);
                         v.lt_pointer_mut()
                     }
                     None => &mut self.high_page,
                 };
 
                 let page = page.get_or_insert_with(|| Box::new(Self::new(level, vec![])));
-                if !page.upsert(key, level, value.clone()) {
-                    insert_intermediate_page(page, key.clone(), level, value);
+                if let UpsertResult::InsertIntermediate(key) =
+                    page.upsert(key, level, value.clone())
+                {
+                    insert_intermediate_page(page, key, level, value);
                 }
             }
             Ordering::Equal => self.upsert_node(key, value),
@@ -250,7 +261,7 @@ where
                 // higher than the desired level.
                 //
                 // Returning false will case the parent will insert a new page.
-                return false; // No need to update the hash of this subtree
+                return UpsertResult::InsertIntermediate(key); // No need to update the hash of this subtree
             }
         }
 
@@ -260,13 +271,14 @@ where
         // This marks the page as "dirty" causing the hash to be recomputed on
         // demand, coalescing multiple updates instead of hashing for each.
         self.tree_hash = None;
-        true
+
+        UpsertResult::Complete
     }
 
     /// Insert a node into this page, splitting any child pages as necessary.
-    pub(crate) fn upsert_node(&mut self, key: &K, value: ValueDigest<N>) {
+    pub(crate) fn upsert_node(&mut self, key: K, value: ValueDigest<N>) {
         // Find the appropriate child pointer to follow.
-        let idx = self.nodes.partition_point(|v| *key > *v.key());
+        let idx = self.nodes.partition_point(|v| key > *v.key());
 
         // At this point the new key should be inserted has been identified -
         // node_idx points to the first node greater-than-or-equal to key.
@@ -301,7 +313,7 @@ where
         // relevant nodes that must be split.
 
         let page_to_split = match self.nodes.get_mut(idx) {
-            Some(n) if *n.key() == *key => {
+            Some(n) if *n.key() == key => {
                 n.update_value_hash(value);
                 return;
             }
@@ -310,26 +322,25 @@ where
         };
 
         // Split the higher-page, either within a GTE node or the high page.
-        let mut new_lt_page = split_off_lt(page_to_split, key).map(Box::new);
+        let mut new_lt_page = split_off_lt(page_to_split, &key).map(Box::new);
 
         if let Some(lt_page) = &mut new_lt_page {
             debug_assert!(self.level > lt_page.level);
             debug_assert!(!lt_page.nodes.is_empty());
-            debug_assert!(lt_page.max_key() < key);
+            debug_assert!(*lt_page.max_key() < key);
 
-            let high_page_lt = split_off_lt(&mut lt_page.high_page, key);
+            let high_page_lt = split_off_lt(&mut lt_page.high_page, &key);
             let gte_page = std::mem::replace(&mut lt_page.high_page, high_page_lt.map(Box::new));
             if let Some(gte_page) = gte_page {
                 debug_assert!(self.level > gte_page.level);
                 debug_assert!(!gte_page.nodes.is_empty());
-                debug_assert!(gte_page.max_key() > key);
+                debug_assert!(*gte_page.max_key() > key);
 
                 self.insert_high_page(gte_page);
             }
         }
 
-        self.nodes
-            .insert(idx, Node::new(key.clone(), value, new_lt_page));
+        self.nodes.insert(idx, Node::new(key, value, new_lt_page));
     }
 }
 
@@ -477,7 +488,7 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
     level: u8,
     value: ValueDigest<N>,
 ) where
-    K: PartialOrd + Clone,
+    K: PartialOrd,
     T: DerefMut<Target = Page<N, K>>,
 {
     // Terminology:
@@ -511,13 +522,6 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
 
     debug_assert!(child_page.level() < level);
     debug_assert!(!child_page.nodes.is_empty());
-
-    // Create the new node.
-    let node = Node::new(key.clone(), value, None);
-
-    // Create the new intermediate page, between the parent page and the child
-    // page.
-    let mut intermediate_page = Page::new(level, vec![node]);
 
     // Split the child page into (less-than, greater-than) pages, split at the
     // point where key would reside.
@@ -579,20 +583,29 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
     // To do this, we split the high page, attaching the lt_nodes to the lt_page
     // created above, and attach the remaining gte_nodes to the high_page of the
     // intermediate_page.
+    let mut gte_page = None;
     if let Some(lt_page) = &mut lt_page {
         debug_assert!(level > lt_page.level);
         debug_assert!(!lt_page.nodes.is_empty());
         debug_assert!(*lt_page.max_key() < key);
 
         let high_page_lt = split_off_lt(&mut lt_page.high_page, &key);
-        let gte_page = std::mem::replace(&mut lt_page.high_page, high_page_lt.map(Box::new));
-        if let Some(gte_page) = gte_page {
+        gte_page = std::mem::replace(&mut lt_page.high_page, high_page_lt.map(Box::new));
+        if let Some(gte_page) = &gte_page {
             debug_assert!(level > gte_page.level);
             debug_assert!(!gte_page.nodes.is_empty());
             debug_assert!(*gte_page.max_key() > key);
-
-            intermediate_page.insert_high_page(gte_page);
         }
+    }
+
+    // Create the new node.
+    let node = Node::new(key, value, None);
+
+    // Create the new intermediate page, between the parent page and the child
+    // page.
+    let mut intermediate_page = Page::new(level, vec![node]);
+    if let Some(gte_page) = gte_page {
+        intermediate_page.insert_high_page(gte_page);
     }
 
     // Replace the page pointer at this level to point to the new page, taking
@@ -615,7 +628,7 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
 
     *child_page.nodes[0].lt_pointer_mut() = lt_page.map(Box::new);
     if !gte_page.nodes.is_empty() {
-        debug_assert!(*gte_page.max_key() > key);
+        debug_assert!(gte_page.max_key() > child_page.nodes[0].key()); // "key"
         debug_assert!(level > gte_page.level);
         child_page.high_page = Some(Box::new(gte_page));
     }
@@ -933,9 +946,9 @@ mod tests {
     fn test_upsert_less_than_split_child() {
         let mut p = Page::new(1, vec![Node::new(4, MOCK_VALUE, None)]);
 
-        p.upsert(&3, 0, MOCK_VALUE);
-        p.upsert(&1, 0, MOCK_VALUE);
-        p.upsert(&2, 1, MOCK_VALUE);
+        p.upsert(3, 0, MOCK_VALUE);
+        p.upsert(1, 0, MOCK_VALUE);
+        p.upsert(2, 1, MOCK_VALUE);
 
         assert_tree!(page = p);
     }

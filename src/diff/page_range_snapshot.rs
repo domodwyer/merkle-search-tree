@@ -11,7 +11,7 @@ use crate::digest::PageDigest;
 /// # use merkle_search_tree::{*, diff::*};
 /// #
 /// let mut t = MerkleSearchTree::default();
-/// t.upsert(&"bananas", &42);
+/// t.upsert("bananas", &42);
 ///
 /// // Rehash the tree before generating the page ranges
 /// let _ = t.root_hash();
@@ -24,7 +24,7 @@ use crate::digest::PageDigest;
 /// let snap = PageRangeSnapshot::from(ranges);
 ///
 /// // The tree is now mutable again.
-/// t.upsert(&"platanos", &42);
+/// t.upsert("platanos", &42);
 /// ```
 ///
 /// [`MerkleSearchTree::serialise_page_ranges()`]:
@@ -83,8 +83,8 @@ mod tests {
         let mut a = MerkleSearchTree::default();
         let mut b = MerkleSearchTree::default();
 
-        a.upsert(&"bananas", &42);
-        b.upsert(&"bananas", &24);
+        a.upsert("bananas", &42);
+        b.upsert("bananas", &24);
 
         // Rehash the tree
         let _ = a.root_hash();
@@ -95,8 +95,8 @@ mod tests {
         let snap_b = PageRangeSnapshot::from(b.serialise_page_ranges().unwrap());
 
         // Tree should be mutable whilst snapshots are in scope
-        a.upsert(&"bananas", &13);
-        b.upsert(&"bananas", &13);
+        a.upsert("bananas", &13);
+        b.upsert("bananas", &13);
 
         // Which should be usable for diff generation (and not reflect the
         // updated state since the trees were mutated).

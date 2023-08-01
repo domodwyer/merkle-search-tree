@@ -28,12 +28,12 @@ let mut node_a = MerkleSearchTree::default();
 // must also be CRDTs (or at least, have deterministic conflict resolution). 
 // Here the MST is used as an add-only set (a trivial CRDT) by using () as the 
 // key values.
-node_a.upsert(&"bananas", &());
-node_a.upsert(&"plátanos", &());
+node_a.upsert("bananas", &());
+node_a.upsert("plátanos", &());
 
 // Another node has differing keys.
 let mut node_b = MerkleSearchTree::default();
-node_b.upsert(&"donkey", &());
+node_b.upsert("donkey", &());
 
 // The MST root hash can be used as an efficient consistency check (comparison 
 // is O(1) in space and time).

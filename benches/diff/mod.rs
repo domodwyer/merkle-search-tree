@@ -47,7 +47,7 @@ fn bench_param(
     let mut rand = Lfsr::default();
     let mut t = MerkleSearchTree::default();
     for _i in 0..n_values {
-        t.upsert(&rand.next().to_string(), &42_usize);
+        t.upsert(rand.next().to_string(), &42_usize);
     }
 
     // Record the serialised pages
@@ -59,7 +59,7 @@ fn bench_param(
     let n_inconsistent = (pcnt_values_inconsistent * (n_values as f64)) as usize;
     let mut t = t.clone();
     for _i in 0..n_inconsistent {
-        t.upsert(&rand.next().to_string(), &4242);
+        t.upsert(rand.next().to_string(), &4242);
     }
 
     // Record the inconsistent/updated pages

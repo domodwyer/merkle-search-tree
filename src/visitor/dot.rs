@@ -278,9 +278,9 @@ mod tests {
 
         let mut p = Page::new(1, vec![Node::new(4, MOCK_VALUE_1, None)]);
 
-        p.upsert(&3, 0, MOCK_VALUE_1);
-        p.upsert(&1, 0, MOCK_VALUE_1);
-        p.upsert(&2, 1, MOCK_VALUE_1);
+        p.upsert(3, 0, MOCK_VALUE_1);
+        p.upsert(1, 0, MOCK_VALUE_1);
+        p.upsert(2, 1, MOCK_VALUE_1);
 
         assert_tree!(page = p);
     }
@@ -289,9 +289,9 @@ mod tests {
     fn test_linear_children() {
         let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
-        t.upsert(&LevelKey::new("I", 2), &"bananas");
-        t.upsert(&LevelKey::new("E", 1), &"bananas");
-        t.upsert(&LevelKey::new("F", 0), &"bananas");
+        t.upsert(LevelKey::new("I", 2), &"bananas");
+        t.upsert(LevelKey::new("E", 1), &"bananas");
+        t.upsert(LevelKey::new("F", 0), &"bananas");
 
         assert_tree!(t);
     }

@@ -100,17 +100,17 @@ mod tests {
     fn test_order() {
         let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
 
-        t.upsert(&LevelKey::new("I", 2), &"bananas");
-        t.upsert(&LevelKey::new("K", 2), &"bananas");
-        t.upsert(&LevelKey::new("A", 1), &"bananas");
-        t.upsert(&LevelKey::new("E", 1), &"bananas");
-        t.upsert(&LevelKey::new("J", 1), &"bananas");
-        t.upsert(&LevelKey::new("B", 0), &"bananas");
-        t.upsert(&LevelKey::new("C", 0), &"bananas");
-        t.upsert(&LevelKey::new("D", 0), &"bananas");
-        t.upsert(&LevelKey::new("F", 0), &"bananas");
-        t.upsert(&LevelKey::new("G", 0), &"bananas");
-        t.upsert(&LevelKey::new("H", 0), &"bananas");
+        t.upsert(LevelKey::new("I", 2), &"bananas");
+        t.upsert(LevelKey::new("K", 2), &"bananas");
+        t.upsert(LevelKey::new("A", 1), &"bananas");
+        t.upsert(LevelKey::new("E", 1), &"bananas");
+        t.upsert(LevelKey::new("J", 1), &"bananas");
+        t.upsert(LevelKey::new("B", 0), &"bananas");
+        t.upsert(LevelKey::new("C", 0), &"bananas");
+        t.upsert(LevelKey::new("D", 0), &"bananas");
+        t.upsert(LevelKey::new("F", 0), &"bananas");
+        t.upsert(LevelKey::new("G", 0), &"bananas");
+        t.upsert(LevelKey::new("H", 0), &"bananas");
 
         assert_tree!(t);
     }

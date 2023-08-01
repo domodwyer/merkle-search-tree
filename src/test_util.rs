@@ -77,7 +77,7 @@ impl Node {
     /// Store the given `key` & `value` in the node, replacing the previous
     /// value of `key`, if any.
     pub fn upsert(&mut self, key: IntKey, value: u64) {
-        self.1.upsert(&key, &value);
+        self.1.upsert(key.clone(), &value);
         self.0.insert(key, value);
     }
 

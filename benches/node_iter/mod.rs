@@ -32,7 +32,7 @@ fn iter_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize) {
 
     (0..n_values)
         .map(|_| rand.next() as u64)
-        .for_each(|v| t.upsert(&v, &v));
+        .for_each(|v| t.upsert(v, &v));
 
     let bench_name = BenchName {
         name: "collect_keys",
