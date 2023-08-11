@@ -43,12 +43,17 @@ fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize) {
             BenchmarkId::new("complete_rehash", bench_params),
             &values,
             |b, values| {
-                b.iter(|| {
-                    let mut t = MerkleSearchTree::default();
-                    for v in values {
-                        t.upsert(&v, &42);
-                    }
-                });
+                let mut t = MerkleSearchTree::default();
+                for v in values {
+                    t.upsert(v, &42);
+                }
+                b.iter_batched(
+                    || t.clone(),
+                    |mut t| {
+                        let _v = t.root_hash();
+                    },
+                    criterion::BatchSize::NumIterations(1),
+                );
             },
         );
     }
