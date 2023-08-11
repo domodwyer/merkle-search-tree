@@ -33,7 +33,7 @@ impl<'a, K> Clone for DiffRange<'a, K> {
 impl<'a, K> DiffRange<'a, K> {
     /// Returns true if the range within `self` overlaps any portion of the
     /// range within `p`.
-    pub fn overlaps(&self, p: &Self) -> bool
+    pub(crate) fn overlaps(&self, p: &Self) -> bool
     where
         K: PartialOrd,
     {

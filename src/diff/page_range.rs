@@ -84,7 +84,7 @@ impl<'a, K> PageRange<'a, K> {
 
     /// Returns true if the range within `self` overlaps any portion of the
     /// range within `p`.
-    pub fn overlaps(&self, p: &Self) -> bool
+    pub(crate) fn overlaps(&self, p: &Self) -> bool
     where
         K: PartialOrd,
     {
@@ -98,7 +98,7 @@ impl<'a, K> PageRange<'a, K> {
 
     /// Returns true if `self` is a superset of `other` (not a strict superset -
     /// equal ranges are treated as supersets of each other).
-    pub fn is_superset_of(&self, other: &Self) -> bool
+    pub(crate) fn is_superset_of(&self, other: &Self) -> bool
     where
         K: PartialOrd,
     {

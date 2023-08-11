@@ -165,7 +165,7 @@ where
 {
     /// Generate the page hash and cache the value, covering the nodes and the
     /// sub-tree rooted at `self`.
-    pub fn maybe_generate_hash(&mut self, hasher: &SipHasher24) {
+    pub(crate) fn maybe_generate_hash(&mut self, hasher: &SipHasher24) {
         if self.tree_hash.is_some() {
             return;
         }
