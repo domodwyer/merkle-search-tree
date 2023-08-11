@@ -364,6 +364,11 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
 
             // Record this page as fully consistent.
             diff_builder.consistent(p.start(), p.end());
+
+            // Skip visiting the pages in the subtree rooted at the current
+            // page: they're guaranteed to be consistent due to the consistent
+            // parent hash.
+            skip_subtree(&p, peer);
         } else {
             debug!(
                 peer_page=?p,
@@ -400,6 +405,17 @@ where
     }
 
     cursor.next()
+}
+
+/// Advance `iter` to the next page that does not form part of the subtree
+/// rooted at the given `subtree_root`.
+#[inline(always)]
+fn skip_subtree<'p, T, K>(subtree_root: &PageRange<'p, K>, iter: &mut Peekable<T>)
+where
+    T: Iterator<Item = PageRange<'p, K>>,
+    K: PartialOrd + Ord + Debug + 'p,
+{
+    while iter.next_if(|v| subtree_root.is_superset_of(v)).is_some() {}
 }
 
 #[cfg(test)]
