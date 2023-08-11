@@ -7,15 +7,15 @@ use crate::{Lfsr, ROW_COUNTS};
 struct BenchName {
     n_values: usize,
     n_pages: usize,
-    pcnt_values_consistent: f64,
+    pcnt_values_inconsistent: f64,
 }
 
 impl From<BenchName> for BenchmarkId {
     fn from(v: BenchName) -> Self {
         Self::new(
             format!(
-                "{}%_consistent_values",
-                (v.pcnt_values_consistent * 100.0).floor()
+                "{}%_inconsistent_values",
+                (v.pcnt_values_inconsistent * 100.0).floor()
             ),
             format!(
                 "{keys}_keys/{pages}_pages",
@@ -36,8 +36,12 @@ pub(super) fn bench_diff(c: &mut Criterion) {
     }
 }
 
-fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize, pcnt_values_consistent: f64) {
-    assert!(pcnt_values_consistent <= 1.0);
+fn bench_param(
+    g: &mut BenchmarkGroup<'_, WallTime>,
+    n_values: usize,
+    pcnt_values_inconsistent: f64,
+) {
+    assert!(pcnt_values_inconsistent <= 1.0);
 
     // Generate the tree.
     let mut rand = Lfsr::default();
@@ -52,7 +56,7 @@ fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize, pcnt_value
 
     // Copy the tree and update some random keys to cause inconsistencies.
     let mut rand = Lfsr::default();
-    let n_inconsistent = (pcnt_values_consistent * (n_values as f64)) as usize;
+    let n_inconsistent = (pcnt_values_inconsistent * (n_values as f64)) as usize;
     let mut t = t.clone();
     for _i in 0..n_inconsistent {
         t.upsert(&rand.next().to_string(), &4242);
@@ -65,7 +69,7 @@ fn bench_param(g: &mut BenchmarkGroup<'_, WallTime>, n_values: usize, pcnt_value
     let bench_name = BenchName {
         n_values,
         n_pages: original_pages.len(),
-        pcnt_values_consistent,
+        pcnt_values_inconsistent,
     };
 
     g.throughput(Throughput::Elements(n_values as _)); // Keys per second
