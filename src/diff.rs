@@ -194,7 +194,7 @@ where
         diff_builder.inconsistent(p.start(), p.end());
     }
 
-    assert!(peer
+    debug_assert!(peer
         .peek()
         .map(|v| !subtree_root.is_superset_of(v))
         .unwrap_or(true));
@@ -268,7 +268,7 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
         last_p = Some(p.clone());
 
         // Never escape the subtree rooted at p_parent.
-        assert!(subtree_root.is_superset_of(&p));
+        debug_assert!(subtree_root.is_superset_of(&p));
 
         trace!(
             peer_page=?p,
