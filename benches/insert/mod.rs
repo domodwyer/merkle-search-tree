@@ -1,6 +1,8 @@
 use std::hash::Hash;
 
-use criterion::{measurement::WallTime, BenchmarkGroup, BenchmarkId, Criterion, Throughput};
+use criterion::{
+    measurement::WallTime, BatchSize, BenchmarkGroup, BenchmarkId, Criterion, Throughput,
+};
 use merkle_search_tree::MerkleSearchTree;
 
 use crate::{Lfsr, ROW_COUNTS};
@@ -55,11 +57,15 @@ fn insert_param<F, T>(
 
     g.throughput(Throughput::Elements(n_values as _));
     g.bench_with_input(BenchmarkId::from(bench_name), &values, |b, values| {
-        b.iter(|| {
-            let mut t = MerkleSearchTree::default();
-            for v in values {
-                t.upsert(&v, &42);
-            }
-        });
+        b.iter_batched(
+            || (*values).clone(),
+            |values| {
+                let mut t = MerkleSearchTree::default();
+                for v in values {
+                    t.upsert(&v, &42);
+                }
+            },
+            BatchSize::PerIteration,
+        );
     });
 }
