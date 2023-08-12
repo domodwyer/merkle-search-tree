@@ -68,7 +68,15 @@ impl<'a, const N: usize, K> From<&'a Page<N, K>> for PageRange<'a, K> {
 
 impl<'a, K> PageRange<'a, K> {
     /// Construct a [`PageRange`] for the given key interval and [`PageDigest`].
-    pub fn new(start: &'a K, end: &'a K, hash: PageDigest) -> Self {
+    ///
+    /// # Panics
+    ///
+    /// If `start` is greater than `end`, this method panics.
+    pub fn new(start: &'a K, end: &'a K, hash: PageDigest) -> Self
+    where
+        K: PartialOrd,
+    {
+        assert!(start <= end);
         Self { start, end, hash }
     }
 
@@ -115,5 +123,64 @@ impl<'a, K> PageRange<'a, K> {
     /// subtree rooted at this page.
     pub fn into_hash(self) -> PageDigest {
         self.hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{digest::Digest, MerkleSearchTree};
+
+    /// Ensure the public API allows for serialisation & deserialisation of
+    /// [`PageRange`].
+    #[test]
+    fn test_round_trip_api() {
+        struct NetworkPage {
+            start_bounds: String,
+            end_bounds: String,
+            hash: [u8; 16],
+        }
+
+        let mut t = MerkleSearchTree::default();
+        t.upsert("bananas".to_string(), &"platanos".to_string());
+        t.root_hash();
+
+        let page_ranges = t.serialise_page_ranges().unwrap();
+
+        // Serialise
+        let network_pages: Vec<NetworkPage> = page_ranges
+            .iter()
+            .map(|v| NetworkPage {
+                start_bounds: v.start().clone(),
+                end_bounds: v.end().clone(),
+                hash: *v.hash().as_bytes(),
+            })
+            .collect();
+
+        // Deserialise
+        let got: Vec<PageRange<'_, String>> = network_pages
+            .iter()
+            .map(|v| {
+                PageRange::new(
+                    &v.start_bounds,
+                    &v.end_bounds,
+                    PageDigest::new(Digest::new(v.hash)),
+                )
+            })
+            .collect();
+
+        assert_eq!(page_ranges, got);
+    }
+
+    #[test]
+    #[should_panic(expected = "start <= end")]
+    fn test_start_gt_end_panic() {
+        let _p = PageRange::new(
+            &42,
+            &24,
+            PageDigest::new(Digest::new([
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+            ])),
+        );
     }
 }

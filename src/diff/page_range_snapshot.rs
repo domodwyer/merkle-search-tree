@@ -34,7 +34,10 @@ pub struct PageRangeSnapshot<K>(Vec<OwnedPageRange<K>>);
 
 impl<K> PageRangeSnapshot<K> {
     /// Return an iterator of [`PageRange`] from the snapshot content.
-    pub fn iter(&self) -> impl Iterator<Item = PageRange<'_, K>> {
+    pub fn iter(&self) -> impl Iterator<Item = PageRange<'_, K>>
+    where
+        K: PartialOrd,
+    {
         self.0
             .iter()
             .map(|v| PageRange::new(&v.start, &v.end, v.hash.clone()))

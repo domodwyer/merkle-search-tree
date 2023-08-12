@@ -45,6 +45,11 @@ impl<const N: usize> Digest<N> {
     pub const fn new(digest: [u8; N]) -> Self {
         Self(digest)
     }
+
+    /// Return a reference to a fixed size digest byte array.
+    pub const fn as_bytes(&self) -> &[u8; N] {
+        &self.0
+    }
 }
 
 impl<const N: usize> AsRef<[u8]> for Digest<N> {
