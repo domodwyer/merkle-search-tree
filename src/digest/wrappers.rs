@@ -49,7 +49,8 @@ impl std::ops::Deref for PageDigest {
 }
 
 impl PageDigest {
-    pub(crate) const fn new(value: Digest<16>) -> Self {
+    /// Construct a new [`PageDigest`] from an untyped 16-byte [`Digest`].
+    pub const fn new(value: Digest<16>) -> Self {
         Self(value)
     }
 }

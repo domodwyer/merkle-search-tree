@@ -268,6 +268,9 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
         last_p = Some(p.clone());
 
         // Never escape the subtree rooted at p_parent.
+        //
+        // Disable for fuzzing to test with fully random inputs.
+        #[cfg(not(fuzzing))]
         debug_assert!(subtree_root.is_superset_of(&p));
 
         trace!(
