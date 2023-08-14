@@ -64,10 +64,10 @@ millions/billions of keys per second:
 
 | Key Count    | Insert All Keys | Generate Root | Serialise | Diff (consistent) | Diff (inconsistent) |
 | ------------ | --------------- | ------------- | --------- | ----------------- | ------------------- |
-| 100 keys     | 9ns             | 14µs          | 96ns      | 551ns             | 533ns               |
-| 1,000 keys   | 111µs           | 142µs         | 813ns     | 6µs               | 6us                 |
-| 10,000 keys  | 1619µs          | 1436µs        | 9µs       | 79µs              | 78µs                |
-| 100,000 keys | 21ms            | 9ms           | 109µs     | 555µs             | 556µs               |
+| 100 keys     | 7µs             | 13µs          | 98ns      | 188ns             | 525ns               |
+| 1,000 keys   | 92µs            | 131µs         | 889ns     | 644ns             | 6µs                 |
+| 10,000 keys  | 1356µs          | 1317µs        | 10µs      | 5µs               | 71µs                |
+| 100,000 keys | 17ms            | 9ms           | 112µs     | 29µs              | 515µs               |
 
 The above measurements capture the single-threaded performance of operations
 against a tree containing varying numbers of keys on a M1 MacBook Pro.
