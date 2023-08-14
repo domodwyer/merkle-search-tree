@@ -81,6 +81,11 @@ against a tree containing varying numbers of keys on a M1 MacBook Pro.
 The benchmarks to generate these numbers are included in this repo (run `cargo
 bench`).
 
+## Testing
+
+This crate is extensively tested using randomised fuzzing & property testing to
+validate correctness, and ensure no panics occur in release builds.
+
 [paper]: https://inria.hal.science/hal-02303490
 [`MerkleSearchTree`]:
     https://docs.rs/merkle-search-tree/latest/merkle_search_tree/struct.MerkleSearchTree.html
