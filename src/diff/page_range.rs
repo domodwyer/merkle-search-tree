@@ -12,6 +12,69 @@ use crate::{digest::PageDigest, Page};
 /// network, and reconstructed by the receiver by calling [`PageRange::new()`]
 /// with the serialised values.
 ///
+/// # Exchanging Between Peers
+///
+/// Exchange the ordered sets of [`PageRange`] between peers by serialising
+/// their content, accessed through the accessor methods:
+///
+/// ```rust
+/// # use std::ops::Deref;
+/// # use merkle_search_tree::{*, diff::PageRange};
+/// #
+/// /// A network wire representation used by the application.
+/// struct NetworkPage {
+///     start_bounds: String,
+///     end_bounds: String,
+///     hash: [u8; 16],
+/// }
+///
+/// let mut t = MerkleSearchTree::default();
+/// t.upsert("bananas".to_string(), &"platanos".to_string());
+/// t.root_hash();
+///
+/// let network_request: Vec<NetworkPage> = t
+///     .serialise_page_ranges()
+///     .unwrap()
+///     .into_iter()
+///     .map(|page| NetworkPage {
+///         start_bounds: page.start().clone(),
+///         end_bounds: page.end().clone(),
+///         hash: *page.hash().as_bytes(),
+///     })
+///     .collect();
+///
+/// // Send network_request to a peer over the network
+/// ```
+///
+/// And reconstruct the [`PageRange`] on the receiver:
+///
+/// ```rust
+/// # use merkle_search_tree::diff::PageRange;
+/// # use merkle_search_tree::digest::*;
+/// #
+/// # struct NetworkPage {
+/// #     start_bounds: String,
+/// #     end_bounds: String,
+/// #     hash: [u8; 16],
+/// # }
+/// #
+/// # let network_request: Vec<NetworkPage> = vec![];
+/// // Receive network_request from a peer over the network
+///
+/// // PageRange construction is zero-copy for the page keys, borrowing the keys
+/// // from the underlying network request.
+/// let page_refs = network_request
+///     .iter()
+///     .map(|p| {
+///         // If this request is coming from an untrusted source, validate that
+///         // start <= end to avoid the PageRange constructor panic.
+///         PageRange::new(&p.start_bounds, &p.end_bounds, PageDigest::new(p.hash))
+///     })
+///     .collect::<Vec<_>>();
+///
+/// // Feed page_refs into diff()
+/// ```
+///
 /// # Borrowed vs. Owned
 ///
 /// A [`PageRange`] borrows the keys from the tree to avoid unnecessary clones,
