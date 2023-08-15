@@ -87,3 +87,17 @@ impl<const N: usize> std::fmt::Display for ValueDigest<N> {
         self.0.fmt(f)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_as_bytes() {
+        let b = [
+            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let d = PageDigest::new(Digest::new(b));
+        assert_eq!(b, *d.as_bytes());
+    }
+}

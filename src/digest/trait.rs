@@ -106,3 +106,15 @@ fn zero_prefix_len(v: u8) -> u8 {
         _ => 0,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_as_bytes() {
+        let b = [42, 42, 42, 42];
+        let d = Digest::new(b);
+        assert_eq!(b, *d.as_bytes());
+    }
+}
