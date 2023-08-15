@@ -93,6 +93,24 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "digest_base64")]
+    fn test_base64_format() {
+        let d = Digest::new([0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61, 0x73, 0x0a]);
+        assert_eq!(d.to_string(), "YmFuYW5hcwo=");
+
+        let value = ValueDigest::new(Digest::new([
+            0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61, 0x73, 0x0a,
+        ]));
+        assert_eq!(value.to_string(), "YmFuYW5hcwo=");
+
+        let page = PageDigest::new(Digest::new([
+            0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61, 0x73, 0x0a, 0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61,
+            0x73, 0x0a,
+        ]));
+        assert_eq!(page.to_string(), "YmFuYW5hcwpiYW5hbmFzCg==");
+    }
+
+    #[test]
     fn test_as_bytes() {
         let b = [
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
