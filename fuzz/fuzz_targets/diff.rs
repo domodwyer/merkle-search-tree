@@ -37,7 +37,7 @@ impl<'a> From<&'a Input> for PageRange<'a, Vec<u8>> {
         PageRange::new(
             (&v.start).min(&v.end),
             (&v.start).max(&v.end),
-            PageDigest::new(Digest::new(v.hash)),
+            PageDigest::new(v.hash),
         )
     }
 }

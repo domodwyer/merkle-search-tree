@@ -210,7 +210,7 @@ where
             h.write(high_hash.as_ref());
         }
 
-        self.tree_hash = Some(PageDigest::new(Digest::new(h.finish128().as_bytes())));
+        self.tree_hash = Some(PageDigest::from(Digest::new(h.finish128().as_bytes())));
     }
 }
 
@@ -642,7 +642,7 @@ mod tests {
     use crate::{assert_tree, digest::Digest};
 
     const MOCK_VALUE: ValueDigest<1> = ValueDigest::new(Digest::new([0; 1]));
-    const MOCK_PAGE_HASH: PageDigest = PageDigest::new(Digest::new([0; 16]));
+    const MOCK_PAGE_HASH: PageDigest = PageDigest::new([0; 16]);
 
     #[test]
     #[should_panic(expected = "!page_ref.nodes.is_empty()")]

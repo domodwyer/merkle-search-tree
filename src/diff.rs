@@ -430,14 +430,12 @@ mod tests {
 
     use super::*;
     use crate::{
-        digest::{Digest, PageDigest},
+        digest::PageDigest,
         test_util::{IntKey, Node},
     };
 
     const fn new_digest(lsb: u8) -> PageDigest {
-        PageDigest::new(Digest::new([
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lsb,
-        ]))
+        PageDigest::new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, lsb])
     }
 
     macro_rules! test_page_is_superset_of {

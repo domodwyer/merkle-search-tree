@@ -49,8 +49,14 @@ impl std::ops::Deref for PageDigest {
 }
 
 impl PageDigest {
-    /// Construct a new [`PageDigest`] from an untyped 16-byte [`Digest`].
-    pub const fn new(value: Digest<16>) -> Self {
+    /// Construct a new [`PageDigest`] from a raw 16-byte array.
+    pub const fn new(value: [u8; 16]) -> Self {
+        Self(Digest::new(value))
+    }
+}
+
+impl From<Digest<16>> for PageDigest {
+    fn from(value: Digest<16>) -> Self {
         Self(value)
     }
 }
@@ -103,7 +109,7 @@ mod tests {
         ]));
         assert_eq!(value.to_string(), "YmFuYW5hcwo=");
 
-        let page = PageDigest::new(Digest::new([
+        let page = PageDigest::from(Digest::new([
             0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61, 0x73, 0x0a, 0x62, 0x61, 0x6e, 0x61, 0x6e, 0x61,
             0x73, 0x0a,
         ]));
@@ -115,7 +121,7 @@ mod tests {
         let b = [
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         ];
-        let d = PageDigest::new(Digest::new(b));
+        let d = PageDigest::from(Digest::new(b));
         assert_eq!(b, *d.as_bytes());
     }
 }
