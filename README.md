@@ -81,7 +81,7 @@ against a tree containing varying numbers of keys on a M1 MacBook Pro.
 The benchmarks to generate these numbers are included in this repo (run `cargo
 bench`).
 
-## Testing
+## Testing
 
 This crate is extensively tested using randomised fuzzing & property testing to
 validate correctness, and ensure no panics occur in release builds.
