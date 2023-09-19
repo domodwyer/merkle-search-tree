@@ -8,6 +8,9 @@ use crate::digest::PageDigest;
 /// clones all the bounding keys in each [`PageRange`], and therefore can only
 /// be generated if the key type `K` implements [`Clone`].
 ///
+/// A [`PageRangeSnapshot`] can also be generated from owned key values using
+/// the [`OwnedPageRange`] type to eliminate clones where unnecessary.
+///
 /// ```
 /// # use merkle_search_tree::{*, diff::*};
 /// #
@@ -63,12 +66,44 @@ where
     }
 }
 
-/// An internal type holding an owned key interval & page hash.
+impl<K> From<Vec<OwnedPageRange<K>>> for PageRangeSnapshot<K> {
+    fn from(value: Vec<OwnedPageRange<K>>) -> Self {
+        value.into_iter().collect()
+    }
+}
+
+impl<K> FromIterator<OwnedPageRange<K>> for PageRangeSnapshot<K> {
+    fn from_iter<T: IntoIterator<Item = OwnedPageRange<K>>>(iter: T) -> Self {
+        Self(iter.into_iter().map(OwnedPageRange::from).collect())
+    }
+}
+
+/// An owned representation of a [`PageRange`] containing an owned key interval
+/// & page hash.
+///
+/// This type can be used to construct a [`PageRangeSnapshot`] from owned values
+/// (eliminating key/hash clones).
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct OwnedPageRange<K> {
+pub struct OwnedPageRange<K> {
     start: K,
     end: K,
     hash: PageDigest,
+}
+
+impl<K> OwnedPageRange<K>
+where
+    K: PartialOrd,
+{
+    /// Initialise a new [`OwnedPageRange`] for the given inclusive key
+    /// interval, and page hash covering the key range.
+    ///
+    /// # Panics
+    ///
+    /// If `start` is greater than `end`, this method panics.
+    pub fn new(start: K, end: K, hash: PageDigest) -> Self {
+        assert!(start <= end);
+        Self { start, end, hash }
+    }
 }
 
 impl<'a, K> From<PageRange<'a, K>> for OwnedPageRange<K>
@@ -120,23 +155,78 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_equivalence() {
-        let mut a = MerkleSearchTree::default();
+    fn test_collect_equivalence_refs() {
+        let a1 = vec![
+            PageRange::new(
+                &"a",
+                &"b",
+                PageDigest::new([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            ),
+            PageRange::new(
+                &"c",
+                &"d",
+                PageDigest::new([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
+            ),
+        ];
 
-        a.upsert("bananas", &42);
-
-        // Rehash the tree
-        let _ = a.root_hash();
-
-        // Generate owned snapshots from the borrowed page ranges via two
-        // different constructors
-        let a1 = PageRangeSnapshot::from(a.serialise_page_ranges().unwrap());
-        let a2 = a
-            .serialise_page_ranges()
-            .unwrap()
-            .into_iter()
-            .collect::<PageRangeSnapshot<_>>();
+        let a2 = a1.clone().into_iter().collect::<PageRangeSnapshot<_>>();
+        let a1 = PageRangeSnapshot::from(a1);
 
         assert_eq!(a1, a2)
+    }
+
+    #[test]
+    fn test_collect_equivalence_owned() {
+        let a1 = vec![
+            OwnedPageRange::new(
+                "a",
+                "b",
+                PageDigest::new([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            ),
+            OwnedPageRange::new(
+                "c",
+                "d",
+                PageDigest::new([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
+            ),
+        ];
+
+        let a2 = a1.clone().into_iter().collect::<PageRangeSnapshot<_>>();
+        let a1 = PageRangeSnapshot::from(a1);
+
+        assert_eq!(a1, a2)
+    }
+
+    #[test]
+    fn test_owned_ref_page_equivalence() {
+        let ref_pages = [
+            PageRange::new(
+                &"a",
+                &"b",
+                PageDigest::new([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            ),
+            PageRange::new(
+                &"c",
+                &"d",
+                PageDigest::new([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
+            ),
+        ];
+
+        let owned_pages = [
+            OwnedPageRange::new(
+                "a",
+                "b",
+                PageDigest::new([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            ),
+            OwnedPageRange::new(
+                "c",
+                "d",
+                PageDigest::new([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
+            ),
+        ];
+
+        let ref_pages = ref_pages.into_iter().collect::<PageRangeSnapshot<_>>();
+        let owned_pages = owned_pages.into_iter().collect::<PageRangeSnapshot<_>>();
+
+        assert_eq!(ref_pages, owned_pages);
     }
 }
