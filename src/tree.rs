@@ -292,6 +292,11 @@ where
     ///
     /// This method invalidates the cached, precomputed root hash value, if any
     /// (even if the value is not modified).
+    ///
+    /// # Value Hash
+    ///
+    /// The tree stores a the hashed representation of `value` - the actual
+    /// value is not stored in the tree.
     #[inline]
     pub fn upsert(&mut self, key: K, value: &'_ V) {
         let value_hash = ValueDigest::new(self.hasher.hash(value));
