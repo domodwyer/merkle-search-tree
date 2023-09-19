@@ -4,8 +4,9 @@ use crate::digest::PageDigest;
 /// An owned point-in-time snapshot of the [`PageRange`] returned from a call to
 /// [`MerkleSearchTree::serialise_page_ranges()`].
 ///
-/// A [`PageRangeSnapshot`] clones all [`PageRange`] bounding keys, and
-/// therefore can only be generated if the key type `K` implements [`Clone`].
+/// Generating a [`PageRangeSnapshot`] from a set of [`PageRange`] instances
+/// clones all the bounding keys in each [`PageRange`], and therefore can only
+/// be generated if the key type `K` implements [`Clone`].
 ///
 /// ```
 /// # use merkle_search_tree::{*, diff::*};
@@ -49,7 +50,16 @@ where
     K: Clone,
 {
     fn from(value: Vec<PageRange<'a, K>>) -> Self {
-        Self(value.into_iter().map(OwnedPageRange::from).collect())
+        value.into_iter().collect()
+    }
+}
+
+impl<'a, K> FromIterator<PageRange<'a, K>> for PageRangeSnapshot<K>
+where
+    K: Clone + 'a,
+{
+    fn from_iter<T: IntoIterator<Item = PageRange<'a, K>>>(iter: T) -> Self {
+        Self(iter.into_iter().map(OwnedPageRange::from).collect())
     }
 }
 
@@ -107,5 +117,26 @@ mod tests {
             assert_eq!(range.start(), &"bananas");
             assert_eq!(range.end(), &"bananas");
         });
+    }
+
+    #[test]
+    fn test_collect_equivalence() {
+        let mut a = MerkleSearchTree::default();
+
+        a.upsert("bananas", &42);
+
+        // Rehash the tree
+        let _ = a.root_hash();
+
+        // Generate owned snapshots from the borrowed page ranges via two
+        // different constructors
+        let a1 = PageRangeSnapshot::from(a.serialise_page_ranges().unwrap());
+        let a2 = a
+            .serialise_page_ranges()
+            .unwrap()
+            .into_iter()
+            .collect::<PageRangeSnapshot<_>>();
+
+        assert_eq!(a1, a2)
     }
 }
