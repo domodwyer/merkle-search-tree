@@ -52,7 +52,7 @@ dependencies = [
 
 [[package]]
 name = "merkle-search-tree"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "base64",
  "siphasher",
@@ -74,6 +74,6 @@ checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
 name = "siphasher"
-version = "0.3.10"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bd3e3206899af3f8b12af284fafc038cc1dc2b41d1b89dd17297221c5d225de"
+checksum = "54ac45299ccbd390721be55b412d41931911f654fa99e2cb8bfb57184b2061fe"
