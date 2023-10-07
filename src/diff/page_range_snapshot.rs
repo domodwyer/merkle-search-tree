@@ -8,9 +8,6 @@ use crate::digest::PageDigest;
 /// clones all the bounding keys in each [`PageRange`], and therefore can only
 /// be generated if the key type `K` implements [`Clone`].
 ///
-/// A [`PageRangeSnapshot`] can also be generated from owned key values using
-/// the [`OwnedPageRange`] type to eliminate clones where unnecessary.
-///
 /// ```
 /// # use merkle_search_tree::{*, diff::*};
 /// #
@@ -30,6 +27,9 @@ use crate::digest::PageDigest;
 /// // The tree is now mutable again.
 /// t.upsert("platanos", &42);
 /// ```
+///
+/// A [`PageRangeSnapshot`] can also be generated from owned key values using
+/// the [`OwnedPageRange`] type to eliminate clones where unnecessary.
 ///
 /// [`MerkleSearchTree::serialise_page_ranges()`]:
 ///     crate::MerkleSearchTree::serialise_page_ranges
