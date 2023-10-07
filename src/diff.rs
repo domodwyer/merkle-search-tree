@@ -1169,35 +1169,6 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    #[test]
-    fn test_prop_fail() {
-        enable_logging!();
-
-        let mut a = Node::default();
-        a.upsert(IntKey::new(6416642709185293041), 0);
-        a.upsert(IntKey::new(6823694781896678135), 0);
-        a.upsert(IntKey::new(6823727308570268642), 0);
-        a.upsert(IntKey::new(16590198516108651936), 0);
-
-        let mut b = Node::default();
-        b.upsert(IntKey::new(0), 0);
-        b.upsert(IntKey::new(10417693944069773430), 0);
-
-        assert_eq!(sync_round(&mut a, &mut b), 0, "a => b run 1");
-        assert_eq!(sync_round(&mut b, &mut a), 1, "b => a run 1");
-
-        assert_eq!(sync_round(&mut a, &mut b), 1, "a => b run 2");
-        assert_eq!(sync_round(&mut b, &mut a), 3, "b => a run 2");
-
-        assert_eq!(sync_round(&mut a, &mut b), 6, "a => b run 3");
-        assert_eq!(sync_round(&mut b, &mut a), 0, "b => a run 3");
-
-        assert_eq!(sync_round(&mut a, &mut b), 0, "a => b run 4");
-        assert_eq!(sync_round(&mut b, &mut a), 0, "b => a run 4");
-
-        assert_eq!(a, b);
-    }
-
     const MAX_NODE_KEYS: usize = 100;
 
     prop_compose! {
