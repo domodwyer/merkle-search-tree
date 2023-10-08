@@ -24,8 +24,8 @@ pub struct DiffRange<'a, K> {
 impl<'a, K> Clone for DiffRange<'a, K> {
     fn clone(&self) -> Self {
         Self {
-            start: self.start.clone(),
-            end: self.end.clone(),
+            start: self.start,
+            end: self.end,
         }
     }
 }
