@@ -31,3 +31,9 @@ name = "diff"
 path = "fuzz_targets/diff.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "converge"
+path = "fuzz_targets/converge.rs"
+test = false
+doc = false
