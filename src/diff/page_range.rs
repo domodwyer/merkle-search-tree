@@ -153,27 +153,13 @@ impl<'a, K> PageRange<'a, K> {
         self.end
     }
 
-    /// Returns true if the range within `self` overlaps any portion of the
-    /// range within `p`.
-    pub(crate) fn overlaps(&self, p: &Self) -> bool
-    where
-        K: PartialOrd,
-    {
-        //   0 1 2 3 4 5 6 7 8 9
-        // A |       |
-        // B       |   |
-        let leading_edge = self.start <= p.start && self.end >= p.start;
-        let trailing_edge = p.start <= self.end && p.end >= self.end;
-        leading_edge || trailing_edge
-    }
-
     /// Returns true if `self` is a superset of `other` (not a strict superset -
     /// equal ranges are treated as supersets of each other).
     pub(crate) fn is_superset_of(&self, other: &Self) -> bool
     where
         K: PartialOrd,
     {
-        self.start <= other.start && self.end >= other.end
+        self.start <= other.start && other.end <= self.end
     }
 
     /// Returns the [`PageDigest`] of this page, representing the content of the

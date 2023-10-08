@@ -230,6 +230,24 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
         let mut l = match maybe_advance_within(&p, local) {
             Some(v) => v,
             None => {
+                // If the local subtree range is a superset of the peer subtree
+                // range, the two are guaranteed to be inconsistent but the
+                // local node contains more keys, potentially causing that
+                // inconsistency.
+                //
+                // Fetching any pages from the less-up-to-date peer may be
+                // spurious, causing no useful advancement of state.
+                if let Some(local) = local.peek() {
+                    if local.is_superset_of(&p) {
+                        trace!(
+                            peer_page=?p,
+                            local_page=?local,
+                            "local page is a superset of peer"
+                        );
+                        return;
+                    }
+                }
+
                 // If there's no matching local page that overlaps with p, then
                 // there must be be one or more keys to be synced from the peer
                 // to populate the missing local pages.
@@ -401,7 +419,7 @@ where
 {
     if cursor
         .peek()
-        .map(|p| !parent.overlaps(p))
+        .map(|p| !parent.is_superset_of(p))
         .unwrap_or_default()
     {
         return None;
@@ -452,16 +470,12 @@ mod tests {
                     let b = PageRange::new(&$b_start, $b_end, new_digest(42));
 
                     assert!(a.is_superset_of(&b) == $want);
-
-                    // All pages that are a superset, also overlap.
-                    if a.is_superset_of(&b) {
-                        assert!(a.overlaps(&b));
-                        assert!(b.overlaps(&a));
-                    }
                 }
             }
         };
     }
+
+    test_page_is_superset_of!(inclusive, a = [1, &10], b = [1, &10], a_is_parent = true);
 
     test_page_is_superset_of!(full, a = [1, &10], b = [2, &9], a_is_parent = true);
 
@@ -905,16 +919,10 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [
-                DiffRange {
-                    start: 1331283967702353742,
-                    end: 4706903583207578752
-                },
-                DiffRange {
-                    start: 4707132771120484774,
-                    end: 17995215864353464453
-                }
-            ]
+            [DiffRange {
+                start: 1331283967702353742,
+                end: 17995215864353464453
+            }]
         );
     }
 
