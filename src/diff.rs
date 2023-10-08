@@ -37,12 +37,7 @@ impl<'a, K> DiffRange<'a, K> {
     where
         K: PartialOrd,
     {
-        //   0 1 2 3 4 5 6 7 8 9
-        // A |       |
-        // B       |   |
-        let leading_edge = self.start <= p.start && self.end >= p.start;
-        let trailing_edge = p.start <= self.end && p.end >= self.end;
-        leading_edge || trailing_edge
+        p.end() >= self.start() && p.start() <= self.end()
     }
 
     /// Returns the inclusive start of this [`DiffRange`], identifying the start
@@ -671,7 +666,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 2, end: 6 }]
+            [DiffRange { start: 2, end: 3 }]
         );
     }
 
