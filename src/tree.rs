@@ -178,7 +178,7 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// // Nodes are yield in ascending key order:
     /// assert_eq!(
     ///     keys.as_slice(),
-    ///     ["bananas1", "bananas2", "bananas3", "bananas4",]
+    ///     ["bananas1", "bananas2", "bananas3", "bananas4"]
     /// )
     /// ```
     pub fn node_iter(&self) -> impl Iterator<Item = &'_ Node<N, K>> {

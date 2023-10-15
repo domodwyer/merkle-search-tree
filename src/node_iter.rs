@@ -10,7 +10,7 @@ struct PageVisit<'a, const N: usize, K> {
     /// The 0-based index of the node to visit next in this page.
     idx: usize,
 
-    /// The outcome of the last visit.
+    /// The outcome of the last visit to this page.
     state: VisitState,
 }
 

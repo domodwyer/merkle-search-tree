@@ -144,6 +144,6 @@ mod tests {
             .collect::<Vec<_>>();
 
         // Pre-order page traversal:
-        assert_matches::assert_matches!(got.as_slice(), [(1, 4), (2, 3),]);
+        assert_matches::assert_matches!(got.as_slice(), [(1, 4), (2, 3)]);
     }
 }

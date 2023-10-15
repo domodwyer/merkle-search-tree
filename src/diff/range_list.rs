@@ -125,25 +125,25 @@ mod tests {
     test_range_list_dedupe!(
         single_overlapping_start,
         insert = [(1, 5), (2, 5)],
-        want = [DiffRange { start: &1, end: &5 },]
+        want = [DiffRange { start: &1, end: &5 }]
     );
 
     test_range_list_dedupe!(
         single_overlapping_start_reversed,
         insert = [(2, 5), (1, 5)],
-        want = [DiffRange { start: &1, end: &5 },]
+        want = [DiffRange { start: &1, end: &5 }]
     );
 
     test_range_list_dedupe!(
         single_overlapping_end,
         insert = [(2, 5), (2, 8)],
-        want = [DiffRange { start: &2, end: &8 },]
+        want = [DiffRange { start: &2, end: &8 }]
     );
 
     test_range_list_dedupe!(
         single_overlapping_end_reversed,
         insert = [(2, 8), (2, 5)],
-        want = [DiffRange { start: &2, end: &8 },]
+        want = [DiffRange { start: &2, end: &8 }]
     );
 
     test_range_list_dedupe!(
