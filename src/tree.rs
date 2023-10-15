@@ -181,10 +181,7 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     ///     ["bananas1", "bananas2", "bananas3", "bananas4",]
     /// )
     /// ```
-    pub fn node_iter(&self) -> impl Iterator<Item = &'_ Node<N, K>>
-    where
-        K: Debug,
-    {
+    pub fn node_iter(&self) -> impl Iterator<Item = &'_ Node<N, K>> {
         NodeIter::new(&self.root)
     }
 }
