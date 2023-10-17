@@ -2,126 +2,126 @@
 source: tests/sync.rs
 expression: out
 ---
-[*] sync with seed 1 - total sync rounds: 3
-	a->b:      12438 keys total	min          0	max       7437	1 zero rounds	avg: 4146  keys per round
-	b->a:      14804 keys total	min          1	max       7495	0 zero rounds	avg: 4934  keys per round
+[*] sync with seed 1 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 2 - total sync rounds: 3
-	a->b:      11337 keys total	min          2	max       6333	0 zero rounds	avg: 3779  keys per round
-	b->a:      12474 keys total	min          2	max       7500	0 zero rounds	avg: 4158  keys per round
+[*] sync with seed 2 - total sync rounds: 2
+	a->b:       7502 keys total	min          2	max       7500	0 zero rounds	avg: 3751  keys per round
+	b->a:       5001 keys total	min          0	max       5001	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 3 - total sync rounds: 4
-	a->b:      18246 keys total	min          0	max       6903	1 zero rounds	avg: 4561  keys per round
-	b->a:      18420 keys total	min          4	max       7470	0 zero rounds	avg: 4605  keys per round
+[*] sync with seed 3 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 4 - total sync rounds: 3
-	a->b:      14804 keys total	min          1	max       7495	0 zero rounds	avg: 4934  keys per round
-	b->a:      12438 keys total	min          0	max       7437	1 zero rounds	avg: 4146  keys per round
+[*] sync with seed 4 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 5 - total sync rounds: 3
-	a->b:      11853 keys total	min          0	max       6852	1 zero rounds	avg: 3951  keys per round
-	b->a:      13176 keys total	min          2	max       7500	0 zero rounds	avg: 4392  keys per round
+[*] sync with seed 5 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 6 - total sync rounds: 2
-	a->b:       7499 keys total	min          2	max       7497	0 zero rounds	avg: 3749  keys per round
-	b->a:       5002 keys total	min          0	max       5002	1 zero rounds	avg: 2501  keys per round
+[*] sync with seed 6 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 7 - total sync rounds: 2
-	a->b:       7500 keys total	min          3	max       7497	0 zero rounds	avg: 3750  keys per round
-	b->a:       5002 keys total	min          0	max       5002	1 zero rounds	avg: 2501  keys per round
+[*] sync with seed 7 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 8 - total sync rounds: 4
-	a->b:      12474 keys total	min          0	max       7500	1 zero rounds	avg: 3118  keys per round
-	b->a:      11338 keys total	min          0	max       6334	1 zero rounds	avg: 2834  keys per round
+[*] sync with seed 8 - total sync rounds: 2
+	a->b:       5001 keys total	min          0	max       5001	1 zero rounds	avg: 2500  keys per round
+	b->a:       7502 keys total	min          2	max       7500	0 zero rounds	avg: 3751  keys per round
 
-[*] sync with seed 9 - total sync rounds: 4
-	a->b:      18537 keys total	min          0	max       7473	1 zero rounds	avg: 4634  keys per round
-	b->a:      18092 keys total	min          2	max       7500	0 zero rounds	avg: 4523  keys per round
+[*] sync with seed 9 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 10 - total sync rounds: 4
-	a->b:      18539 keys total	min          0	max       7474	1 zero rounds	avg: 4634  keys per round
-	b->a:      18093 keys total	min          2	max       7500	0 zero rounds	avg: 4523  keys per round
+[*] sync with seed 10 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 11 - total sync rounds: 3
-	a->b:      18243 keys total	min       5000	max       7354	0 zero rounds	avg: 6081  keys per round
-	b->a:      17104 keys total	min       2639	max       7500	0 zero rounds	avg: 5701  keys per round
+[*] sync with seed 11 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 12 - total sync rounds: 4
-	a->b:      18421 keys total	min          4	max       7470	0 zero rounds	avg: 4605  keys per round
-	b->a:      18246 keys total	min          0	max       6903	1 zero rounds	avg: 4561  keys per round
+[*] sync with seed 12 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 13 - total sync rounds: 3
-	a->b:      14935 keys total	min          1	max       7492	0 zero rounds	avg: 4978  keys per round
-	b->a:      19847 keys total	min       4880	max       7496	0 zero rounds	avg: 6615  keys per round
+[*] sync with seed 13 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 14 - total sync rounds: 4
-	a->b:      18434 keys total	min          4	max       7471	0 zero rounds	avg: 4608  keys per round
-	b->a:      18243 keys total	min          0	max       6905	1 zero rounds	avg: 4560  keys per round
+[*] sync with seed 14 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 15 - total sync rounds: 4
-	a->b:      17302 keys total	min          0	max       7285	1 zero rounds	avg: 4325  keys per round
-	b->a:      14393 keys total	min          2	max       7487	0 zero rounds	avg: 3598  keys per round
+[*] sync with seed 15 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 16 - total sync rounds: 3
-	a->b:      12438 keys total	min          0	max       7437	1 zero rounds	avg: 4146  keys per round
-	b->a:      14804 keys total	min          1	max       7495	0 zero rounds	avg: 4934  keys per round
+[*] sync with seed 16 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 17 - total sync rounds: 4
-	a->b:      16214 keys total	min          0	max       7500	1 zero rounds	avg: 4053  keys per round
-	b->a:      13218 keys total	min          0	max       7326	1 zero rounds	avg: 3304  keys per round
+[*] sync with seed 17 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 18 - total sync rounds: 3
-	a->b:      13179 keys total	min          3	max       7499	0 zero rounds	avg: 4393  keys per round
-	b->a:      11854 keys total	min          0	max       6852	1 zero rounds	avg: 3951  keys per round
+[*] sync with seed 18 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 19 - total sync rounds: 3
-	a->b:      11073 keys total	min          0	max       6071	1 zero rounds	avg: 3691  keys per round
-	b->a:      11534 keys total	min          3	max       7500	0 zero rounds	avg: 3844  keys per round
+[*] sync with seed 19 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 20 - total sync rounds: 3
-	a->b:      13175 keys total	min          3	max       7499	0 zero rounds	avg: 4391  keys per round
-	b->a:      11853 keys total	min          0	max       6851	1 zero rounds	avg: 3951  keys per round
+[*] sync with seed 20 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 21 - total sync rounds: 3
-	a->b:      13176 keys total	min          3	max       7499	0 zero rounds	avg: 4392  keys per round
-	b->a:      11848 keys total	min          0	max       6846	1 zero rounds	avg: 3949  keys per round
+[*] sync with seed 21 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 22 - total sync rounds: 3
-	a->b:       8229 keys total	min          2	max       7498	0 zero rounds	avg: 2743  keys per round
-	b->a:      10245 keys total	min          0	max       5243	1 zero rounds	avg: 3415  keys per round
+[*] sync with seed 22 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 23 - total sync rounds: 3
-	a->b:      11902 keys total	min          0	max       6901	1 zero rounds	avg: 3967  keys per round
-	b->a:      14383 keys total	min          1	max       7471	0 zero rounds	avg: 4794  keys per round
+[*] sync with seed 23 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
 [*] sync with seed 24 - total sync rounds: 2
-	a->b:       5002 keys total	min          0	max       5002	1 zero rounds	avg: 2501  keys per round
-	b->a:       7499 keys total	min          2	max       7497	0 zero rounds	avg: 3749  keys per round
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 25 - total sync rounds: 3
-	a->b:      12476 keys total	min          0	max       7475	1 zero rounds	avg: 4158  keys per round
-	b->a:      14909 keys total	min          2	max       7500	0 zero rounds	avg: 4969  keys per round
+[*] sync with seed 25 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 26 - total sync rounds: 4
-	a->b:      16214 keys total	min          0	max       7500	1 zero rounds	avg: 4053  keys per round
-	b->a:      13217 keys total	min          0	max       7326	1 zero rounds	avg: 3304  keys per round
+[*] sync with seed 26 - total sync rounds: 2
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 27 - total sync rounds: 2
-	a->b:      12464 keys total	min       4964	max       7500	0 zero rounds	avg: 6232  keys per round
-	b->a:       7483 keys total	min          0	max       7483	1 zero rounds	avg: 3741  keys per round
+[*] sync with seed 27 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
 [*] sync with seed 28 - total sync rounds: 2
-	a->b:       5002 keys total	min          0	max       5002	1 zero rounds	avg: 2501  keys per round
-	b->a:       7500 keys total	min          3	max       7497	0 zero rounds	avg: 3750  keys per round
+	a->b:       7500 keys total	min          0	max       7500	1 zero rounds	avg: 3750  keys per round
+	b->a:       5000 keys total	min          0	max       5000	1 zero rounds	avg: 2500  keys per round
 
-[*] sync with seed 29 - total sync rounds: 2
-	a->b:      12248 keys total	min       5000	max       7248	0 zero rounds	avg: 6124  keys per round
-	b->a:      14744 keys total	min       7249	max       7495	0 zero rounds	avg: 7372  keys per round
+[*] sync with seed 29 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
-[*] sync with seed 30 - total sync rounds: 2
-	a->b:      12464 keys total	min       4964	max       7500	0 zero rounds	avg: 6232  keys per round
-	b->a:       7483 keys total	min          0	max       7483	1 zero rounds	avg: 3741  keys per round
+[*] sync with seed 30 - total sync rounds: 1
+	a->b:       5000 keys total	min       5000	max       5000	0 zero rounds	avg: 5000  keys per round
+	b->a:       7500 keys total	min       7500	max       7500	0 zero rounds	avg: 7500  keys per round
 
 
-92 total sync rounds needed to converge 30 tree pairs (average 3.07 rounds, 26168 keys per pair)
+46 total sync rounds needed to converge 30 tree pairs (average 1.53 rounds, 12500 keys per pair)
 

@@ -96,21 +96,6 @@ impl<'a, K> DiffRange<'a, K> {
 /// values are consistent), or the two trees are identical, no [`DiffRange`]
 /// intervals are returned.
 ///
-/// # Optimistic Page Bounds Fetching
-///
-/// When a page exists in `peer` has a key range that is a strict superset of
-/// the key range of the same page in `local`, it is guaranteed to be
-/// inconsistent. When this occurs, only the difference / missing keys are
-/// returned in that page's [`DiffRange`].
-///
-/// This optimistically assumes the intersection of keys between the two pages
-/// are consistent, minimising the number of keys fetched when this assumption
-/// holds true. If false, the page will be marked fully inconsistent (inclusive
-/// of the newly fetched keys) in the next [`diff()`] call.
-///
-/// This optimises for monotonic keys, recommended to minimise tree page
-/// inconsistencies / keys fetched when new keys are inserted into the tree.
-///
 /// # Termination
 ///
 /// A single invocation to [`diff()`] always terminates, and completes in `O(n)`
@@ -226,9 +211,9 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
             Some(v) => v,
             None => {
                 // If the local subtree range is a superset of the peer subtree
-                // range, the two are guaranteed to be inconsistent but the
-                // local node contains more keys, potentially causing that
-                // inconsistency.
+                // range, the two are guaranteed to be inconsistent due to the
+                // local node containing more keys (potentially the sole cause
+                // of that inconsistency).
                 //
                 // Fetching any pages from the less-up-to-date peer may be
                 // spurious, causing no useful advancement of state.
@@ -302,73 +287,6 @@ fn recurse_diff<'p, 'a: 'p, T, U, K>(
                 "shrink local diff range"
             );
             l = v;
-        }
-
-        // If the bounds don't match, fetch the missing parts from the peer and
-        // move on to the next page.
-        if p.start() < l.start() {
-            trace!(
-                peer_page=?p,
-                local_page=?l,
-                "request missing page start range from peer"
-            );
-            // If a parent was missing a leaf node, it's guaranteed all
-            // children pages on the left-most edge will be missing a node
-            // too (and therefore are inconsistent) until they reach that
-            // leaf node.
-            //
-            // This would cause the same range to be requested by this check
-            // as the left-most edge is descended, so de-duplicate the
-            // requests.
-            diff_builder.inconsistent(p.start(), l.start()); // exclusive end range
-
-            // Ignore any potential inconsistency within the intersection
-            // between pages when fetching a range bounds mismatch.
-            //
-            // This may cause more round trips to sync this page, but optimises
-            // for the "leading edge" case, fetching only the range bounds and
-            // assuming it'll make the page consistent instead of fetching the
-            // whole page for what may be a single new (monotonic) key.
-            diff_builder.consistent(l.start().max(p.start()), l.end().min(p.end()));
-        }
-
-        if p.end() > l.end() {
-            trace!(
-                peer_page=?p,
-                local_page=?l,
-                "request missing page end range from peer"
-            );
-            // As above for the less-than side, dedupe end ranges for the
-            // right-most edge.
-            diff_builder.inconsistent(l.end(), p.end()); // inclusive end range
-
-            // Ignore any potential inconsistency within the intersection
-            // between pages when fetching a range bounds mismatch - see above.
-            diff_builder.consistent(l.start().max(p.start()), l.end().min(p.end()));
-        }
-
-        // If the page bounds do not match, it is guaranteed this page is
-        // inconsistent.
-        //
-        // The missing range has been requested above - begin visiting child
-        // pages without marking this entire page range as inconsistent this
-        // round.
-        //
-        // Once the full range of keys for this page is obtained, a subsequent
-        // diff will cause a proper consistency check of this page and fetch
-        // only the keys/child ranges that actually differ.
-        if p.start() != l.start() || p.end() != l.end() {
-            debug!(
-                peer_page=?p,
-                local_page=?l,
-                "page inconsistent due to range mismatch"
-            );
-
-            // Skip hash evaluation (they're definitely not equal) and avoid
-            // adding the full peer range as a consistent/inconsistent range -
-            // prefer instead to optimistically fetch only the range diff.
-            recurse_subtree(&p, peer, local, diff_builder);
-            continue;
         }
 
         if l.hash() == p.hash() {
@@ -567,7 +485,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 11, end: 15 }]
+            [DiffRange { start: 6, end: 15 }]
         );
     }
 
@@ -639,7 +557,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 2, end: 3 }]
+            [DiffRange { start: 2, end: 15 }]
         );
     }
 
@@ -666,7 +584,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 2, end: 3 }]
+            [DiffRange { start: 2, end: 15 }]
         );
     }
 
@@ -750,7 +668,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 15, end: 16 }]
+            [DiffRange { start: 6, end: 16 }]
         );
     }
 
@@ -808,7 +726,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [DiffRange { start: 6, end: 15 }]
+            [DiffRange { start: 2, end: 15 }]
         );
     }
 
@@ -821,13 +739,6 @@ mod tests {
         //
         // It appears in the peer only, and additionally the value of 2 is
         // modified.
-        //
-        // This checks if discrepancies in children are still discovered, even
-        // when bounds of parents differ. Ideally all discrepancies would be
-        // discovered the first time round, but in order to optimise for
-        // "leading edge" key additions and optimistically minimise sync ranges,
-        // this is not the case - instead the range diff is resolved first, and
-        // after, the page inconsistency for 2 is resolved via a second sync.
 
         let local = vec![
             PageRange::new(&2, &15, new_digest(1)),
@@ -850,7 +761,7 @@ mod tests {
 
         assert_matches!(
             diff(local, peer.clone()).as_slice(),
-            [DiffRange { start: 6, end: 15 }]
+            [DiffRange { start: 2, end: 15 }]
         );
 
         let mut local = peer.clone();
@@ -928,14 +839,11 @@ mod tests {
         enable_logging!();
 
         let local = vec![PageRange::new(&2, &15, new_digest(1))];
-        let peer = vec![PageRange::new(&1, &42, new_digest(1))];
+        let peer = vec![PageRange::new(&1, &42, new_digest(2))];
 
         assert_matches!(
             diff(local, peer).as_slice(),
-            [
-                DiffRange { start: 1, end: 2 },
-                DiffRange { start: 15, end: 42 },
-            ]
+            [DiffRange { start: 1, end: 42 }]
         );
     }
 
@@ -1134,8 +1042,10 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    /// Ensure only the "leading edge" missing keys are fetched - the common
-    /// case for new monotonic keys added to a tree.
+    /// OLD: Previously ensured only the "leading edge" missing keys are fetched
+    /// - the common case for new monotonic keys added to a tree.
+    ///
+    /// Disabled to reduce average sync cost.
     #[test]
     fn test_leading_edge_range_sync() {
         enable_logging!();
@@ -1160,7 +1070,7 @@ mod tests {
         b.upsert(IntKey::new(5), 0);
         b.upsert(IntKey::new(6), 0);
 
-        assert_eq!(sync_round(&mut a, &mut b), 5, "a => b run 1");
+        assert_eq!(sync_round(&mut a, &mut b), 10, "a => b run 1");
         assert_eq!(sync_round(&mut b, &mut a), 0, "b => a run 1");
 
         assert_eq!(sync_round(&mut a, &mut b), 0, "a => b run 2");
