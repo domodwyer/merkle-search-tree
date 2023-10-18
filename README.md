@@ -24,9 +24,9 @@ let mut node_a = MerkleSearchTree::default();
 
 // Upsert values into the tree.
 //
-// For the MST construct to be a CRDT itself, the values stored into the tree 
-// must also be CRDTs (or at least, have deterministic conflict resolution). 
-// Here the MST is used as an add-only set (a trivial CRDT) by using () as the 
+// For the MST construct to be a CRDT itself, the values stored into the tree
+// must also be CRDTs (or at least, have deterministic conflict resolution).
+// Here the MST is used as an add-only set (a trivial CRDT) by using () as the
 // key values.
 node_a.upsert("bananas", &());
 node_a.upsert("plátanos", &());
@@ -35,21 +35,21 @@ node_a.upsert("plátanos", &());
 let mut node_b = MerkleSearchTree::default();
 node_b.upsert("donkey", &());
 
-// The MST root hash can be used as an efficient consistency check (comparison 
+// The MST root hash can be used as an efficient consistency check (comparison
 // is O(1) in space and time).
 //
-// In this case, both trees are inconsistent w.r.t each other, which is 
+// In this case, both trees are inconsistent w.r.t each other, which is
 // indicated by their differing root hashes.
 assert_ne!(node_a.root_hash(), node_b.root_hash());
 
-// Generate compact summaries of the MST content, suitable for transmission over 
+// Generate compact summaries of the MST content, suitable for transmission over
 // the network, and use it to compute the diff between two trees.
 let diff_range = diff(
     node_b.serialise_page_ranges().unwrap().into_iter(),
     node_a.serialise_page_ranges().unwrap().into_iter(),
 );
 
-// In this case, node B can obtain the missing/differing keys in node A by 
+// In this case, node B can obtain the missing/differing keys in node A by
 // requesting keys within the computed diff range (inclusive):
 assert_matches::assert_matches!(diff_range.as_slice(), [range] => {
     assert_eq!(range.start(), &"bananas");
@@ -65,9 +65,9 @@ millions/billions of keys per second:
 | Key Count    | Insert All Keys | Generate Root | Serialise | Diff (consistent) | Diff (inconsistent) |
 | ------------ | --------------- | ------------- | --------- | ----------------- | ------------------- |
 | 100 keys     | 7µs             | 3µs           | 98ns      | 152ns             | 261ns               |
-| 1,000 keys   | 92µs            | 39µs          | 847ns     | 696ns             | 4µs                 |
-| 10,000 keys  | 1356µs          | 398µs         | 10µs      | 5µs               | 36µs                |
-| 100,000 keys | 17ms            | 3ms           | 112µs     | 43µs              | 287µs               |
+| 1,000 keys   | 92µs            | 39µs          | 847ns     | 577ns             | 4µs                 |
+| 10,000 keys  | 1356µs          | 398µs         | 10µs      | 4µs               | 36µs                |
+| 100,000 keys | 17ms            | 3ms           | 112µs     | 26µs              | 287µs               |
 
 The above measurements capture the single-threaded performance of operations
 against a tree containing varying numbers of keys on a M1 MacBook Pro.
