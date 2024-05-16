@@ -75,22 +75,25 @@ where
         None => return,
     }
 
-    for current in range_iter {
-        let merged = source.last_mut().unwrap();
+    for range in range_iter {
+        let last = source.last_mut().unwrap();
+
+        // Invariant: ranges are sorted by range start.
+        debug_assert!(range.start >= last.start);
 
         // Check if this range falls entirely within the existing range.
-        if current.start >= merged.start && current.end <= merged.end {
+        if range.end <= last.end {
             // Skip this range that is a subset of the existing range.
             continue;
         }
 
-        // Check for overlap across the inclusive ranges.
-        if current.start <= merged.end {
-            // These two ranges overlap - extend the range in the merged
-            // output.
-            merged.end = current.end;
+        // Check for overlap across the end ranges (inclusive).
+        if range.start <= last.end {
+            // These two ranges overlap - extend the range in "last" to cover
+            // both.
+            last.end = range.end;
         } else {
-            source.push(current);
+            source.push(range);
         }
     }
 }
