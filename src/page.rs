@@ -148,7 +148,7 @@ impl<const N: usize, K> Page<N, K> {
     #[inline]
     pub(crate) fn min_subtree_key(&self) -> &K {
         // This is mildly faster than the iterator chain approach.
-        let v = self.nodes().get(0).and_then(|v| v.lt_pointer());
+        let v = self.nodes().first().and_then(|v| v.lt_pointer());
         if let Some(v) = v {
             return v.min_subtree_key();
         }

@@ -56,11 +56,11 @@ impl<'a, const N: usize, K> Iterator for NodeIter<'a, N, K> {
     type Item = &'a Node<N, K>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        'outer: loop {
+        loop {
             let p = self.stack.pop()?;
 
             // Try and load the indexed node in this page.
-            let n = match p.page.nodes().iter().nth(p.idx) {
+            let n = match p.page.nodes().get(p.idx) {
                 Some(v) => v,
                 None => {
                     // No more nodes, instead visit the high page next, if any.
@@ -75,7 +75,7 @@ impl<'a, const N: usize, K> Iterator for NodeIter<'a, N, K> {
                     // Loop again, potentially popping the just-added high page,
                     // or popping a higher-level page (moving up the tree) if
                     // none.
-                    continue 'outer;
+                    continue;
                 }
             };
 
@@ -99,7 +99,7 @@ impl<'a, const N: usize, K> Iterator for NodeIter<'a, N, K> {
                         });
                         // Pop it off the next loop iteration and visit the
                         // first node.
-                        continue 'outer;
+                        continue;
                     }
 
                     // Otherwise there's no lt_pointer to follow in this node,
