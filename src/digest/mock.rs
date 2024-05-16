@@ -50,7 +50,7 @@ where
 {
     fn hash(&self, value: &LevelKey<T>) -> Digest<32> {
         let level: u8 = value.1;
-        let iter = iter::repeat(0).take(usize::try_from(level).expect("cast fail") / 2);
+        let iter = iter::repeat(0).take(usize::from(level) / 2);
 
         let mut v: Vec<_> = if (level % 2) == 1 {
             iter.chain(iter::once(0xF0)).collect()
