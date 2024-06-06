@@ -38,7 +38,7 @@ pub struct PageRangeSnapshot<K>(Vec<OwnedPageRange<K>>);
 
 impl<K> PageRangeSnapshot<K> {
     /// Return an iterator of [`PageRange`] from the snapshot content.
-    pub fn iter(&self) -> impl Iterator<Item = PageRange<'_, K>>
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = PageRange<'_, K>>
     where
         K: PartialOrd,
     {
@@ -228,5 +228,24 @@ mod tests {
         let owned_pages = owned_pages.into_iter().collect::<PageRangeSnapshot<_>>();
 
         assert_eq!(ref_pages, owned_pages);
+    }
+
+    #[test]
+    fn test_exact_size_iter() {
+        let pages = [
+            PageRange::new(
+                &"a",
+                &"b",
+                PageDigest::new([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
+            ),
+            PageRange::new(
+                &"c",
+                &"d",
+                PageDigest::new([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
+            ),
+        ];
+
+        let pages = pages.into_iter().collect::<PageRangeSnapshot<_>>();
+        assert_eq!(pages.iter().len(), 2);
     }
 }
