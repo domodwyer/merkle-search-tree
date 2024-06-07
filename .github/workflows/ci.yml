@@ -9,7 +9,7 @@ jobs:
         feature_flags: ["no-default-features", "all-features"]
     runs-on: ubuntu-latest
     steps:
-    
+
     - uses: actions/checkout@v2
 
     - name: fmt
@@ -25,7 +25,25 @@ jobs:
       run: cargo test --${{matrix.feature_flags}} --benches --no-run --verbose
 
     - name: clippy
-      run: cargo clippy --${{matrix.feature_flags}}
+      run: cargo clippy --${{matrix.feature_flags}} -- -D warnings
 
     - name: docs
       run: cargo doc --${{matrix.feature_flags}} --document-private-items --no-deps
+
+  fuzz-build:
+    strategy:
+      matrix:
+        feature_flags: ["no-default-features", "all-features"]
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Install cargo-fuzz
+      run: cargo install -f cargo-fuzz --all-features
+
+    - name: Install nightly
+      run: rustup toolchain install nightly
+
+    - name: Build fuzz tests
+      run: cargo +nightly fuzz build --${{matrix.feature_flags}} --verbose
