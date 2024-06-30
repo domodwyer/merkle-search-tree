@@ -92,13 +92,15 @@ where
 mod tests {
     use crate::{
         assert_tree,
+        builder::Builder,
         digest::mock::{LevelKey, MockHasher},
-        MerkleSearchTree,
     };
 
     #[test]
     fn test_order() {
-        let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
+        let mut t = Builder::default()
+            .with_hasher(MockHasher::default())
+            .build();
 
         t.upsert(LevelKey::new("I", 2), &"bananas");
         t.upsert(LevelKey::new("K", 2), &"bananas");

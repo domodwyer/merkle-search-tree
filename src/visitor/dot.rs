@@ -192,11 +192,11 @@ mod tests {
     use super::*;
     use crate::{
         assert_tree,
+        builder::Builder,
         digest::{
             mock::{LevelKey, MockHasher},
             Digest, ValueDigest,
         },
-        MerkleSearchTree,
     };
 
     const MOCK_VALUE: ValueDigest<32> = ValueDigest::new(Digest::new([0; 32]));
@@ -287,7 +287,9 @@ mod tests {
 
     #[test]
     fn test_linear_children() {
-        let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
+        let mut t = Builder::default()
+            .with_hasher(MockHasher::default())
+            .build();
 
         t.upsert(LevelKey::new("I", 2), &"bananas");
         t.upsert(LevelKey::new("E", 1), &"bananas");

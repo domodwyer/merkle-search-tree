@@ -42,6 +42,7 @@ mod tracing;
 #[cfg(test)]
 mod test_assert;
 
+pub mod builder;
 pub mod diff;
 pub mod digest;
 mod node;

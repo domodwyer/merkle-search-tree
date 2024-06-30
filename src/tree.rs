@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// An alias for the default hash implementation.
-type DefaultHasher = SipHasher;
+pub(crate) type DefaultHasher = SipHasher;
 
 /// An implementation of the Merkle Search Tree as described in [Merkle Search
 /// Trees: Efficient State-Based CRDTs in Open Networks][paper].
@@ -126,6 +126,7 @@ impl<K, V> Default for MerkleSearchTree<K, V> {
 impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
     /// Initialise a new [`MerkleSearchTree`] using the provided [`Hasher`] of
     /// keys & values.
+    #[deprecated(since = "0.8.0", note = "please use `Builder::with_hasher` instead")]
     pub fn new_with_hasher(hasher: H) -> Self {
         Self {
             hasher,
@@ -318,6 +319,21 @@ where
     }
 }
 
+impl<H> crate::builder::Builder<H> {
+    /// Consume this [`Builder`] and return the configured [`MerkleSearchTree`].
+    ///
+    /// [`Builder`]: crate::builder::Builder
+    pub fn build<K, V, const N: usize>(self) -> MerkleSearchTree<K, V, H, N> {
+        MerkleSearchTree {
+            hasher: self.hasher,
+            tree_hasher: SipHasher24::default(),
+            root: Page::new(0, vec![]),
+            root_hash: None,
+            _value_type: PhantomData,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -331,6 +347,7 @@ mod tests {
     use super::*;
     use crate::{
         assert_tree,
+        builder::Builder,
         digest::{
             mock::{LevelKey, MockHasher},
             Digest,
@@ -361,7 +378,9 @@ mod tests {
 
     #[test]
     fn test_hash_fixture() {
-        let mut t = MerkleSearchTree::new_with_hasher(FixtureHasher::default());
+        let mut t = Builder::default()
+            .with_hasher(FixtureHasher::default())
+            .build();
 
         for i in 0..1000 {
             t.upsert(IntKey::new(i), &i);
@@ -399,7 +418,9 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<test_ $name>]() {
-                    let mut t = MerkleSearchTree::new_with_hasher(MockHasher::default());
+                    let mut t = Builder::default()
+                        .with_hasher(MockHasher::default())
+                        .build();
 
 					$(
 						t.upsert($key, $value);
