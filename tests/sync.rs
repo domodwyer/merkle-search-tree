@@ -1,15 +1,18 @@
 use std::{
     collections::BTreeMap,
     fmt::{Display, Write},
+    num::NonZeroU8,
     ops::RangeInclusive,
 };
 
 use merkle_search_tree::{
+    builder::Builder,
     diff::{diff, PageRange},
     MerkleSearchTree,
 };
 
 const N_VALUES: usize = 5_000;
+const B: u8 = 16;
 
 #[derive(Debug, Default)]
 struct SyncStats {
@@ -56,8 +59,6 @@ impl Display for DirectionStats {
 }
 
 /// A test that drives convergence between two randomly generated reference
-/// trees (random key/value pairs are deterministic across runs), and records
-/// statistics describing the keys/rounds required to reach convergence.
 /// trees with approximately uniform distributed inconsistencies (random
 /// key/value pairs are deterministic across runs), and records statistics
 /// describing the keys/rounds required to reach convergence.
@@ -264,8 +265,19 @@ fn sync_round(from: &mut Node, to: &mut Node, stats: &mut DirectionStats) {
 
 /// A mock peer, storing `(key, value)` tuples and maintaining a
 /// [`MerkleSearchTree`] of the store contents.
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Node(BTreeMap<String, u16>, MerkleSearchTree<String, u16>);
+
+impl Default for Node {
+    fn default() -> Self {
+        Self(
+            Default::default(),
+            Builder::default()
+                .with_level_base(NonZeroU8::new(B).unwrap())
+                .build(),
+        )
+    }
+}
 
 impl Node {
     /// Store the given `key` & `value` in the node, replacing the previous
