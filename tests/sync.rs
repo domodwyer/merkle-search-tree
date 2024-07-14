@@ -58,17 +58,20 @@ impl Display for DirectionStats {
 /// A test that drives convergence between two randomly generated reference
 /// trees (random key/value pairs are deterministic across runs), and records
 /// statistics describing the keys/rounds required to reach convergence.
+/// trees with approximately uniform distributed inconsistencies (random
+/// key/value pairs are deterministic across runs), and records statistics
+/// describing the keys/rounds required to reach convergence.
 ///
 /// MST/diff changes can change the efficiency of syncs, and this test surfaces
 /// those changes.
 #[test]
-fn test_sync_rounds() {
+fn test_uniform_sync_rounds() {
     let mut out = String::new();
     let mut total_rounds = 0;
     let mut total_keys = 0;
     let mut n_rounds = 0;
     for i in 1..=30 {
-        let v = do_sync(Lfsr(i));
+        let v = sync_uniformly_inconsistent(Lfsr(i));
 
         writeln!(
             &mut out,
@@ -107,8 +110,8 @@ fn test_sync_rounds() {
     writeln!(&mut out).unwrap();
     writeln!(
         &mut out,
-        "{total_rounds} total sync rounds needed to converge {n_rounds} tree \
-		pairs (average {:.2} rounds, {} keys per pair)",
+        "{total_rounds} total sync rounds needed to converge {n_rounds} test \
+        samples (average {:.2} rounds, {} keys per pair)",
         total_rounds as f32 / n_rounds as f32,
         total_keys / n_rounds,
     )
@@ -117,7 +120,7 @@ fn test_sync_rounds() {
     insta::assert_snapshot!(out);
 }
 
-fn do_sync(mut rand: Lfsr) -> SyncStats {
+fn sync_uniformly_inconsistent(mut rand: Lfsr) -> SyncStats {
     let mut a = Node::default();
     let mut b = Node::default();
 
@@ -134,6 +137,92 @@ fn do_sync(mut rand: Lfsr) -> SyncStats {
         a.upsert(key.clone(), value);
         b.upsert(key.clone(), value);
     }
+
+    let mut result = SyncStats::default();
+
+    // Drive them to convergence, recording sync statistics.
+    while a.1.root_hash() != b.1.root_hash() {
+        result.rounds += 1;
+        sync_round(&mut a, &mut b, &mut result.keys_a_to_b);
+        sync_round(&mut b, &mut a, &mut result.keys_b_to_a);
+    }
+
+    result
+}
+
+/// Perform a peer sync test where both peers contain identical
+#[test]
+fn test_single_diff_sync_rounds() {
+    let mut out = String::new();
+    let mut total_rounds = 0;
+    let mut total_keys = 0;
+    let mut n_rounds = 0;
+    for i in 1..=30 {
+        let v = sync_single_inconsistency(Lfsr(i));
+
+        writeln!(
+            &mut out,
+            "[*] sync with seed {i} - total sync rounds: {}",
+            v.rounds
+        )
+        .unwrap();
+        writeln!(
+            &mut out,
+            "\ta->b: {}\tavg: {:<5} keys per round",
+            v.keys_a_to_b,
+            v.keys_a_to_b
+                .total
+                .checked_div(v.rounds)
+                .unwrap_or_default(),
+        )
+        .unwrap();
+        writeln!(
+            &mut out,
+            "\tb->a: {}\tavg: {:<5} keys per round",
+            v.keys_b_to_a,
+            v.keys_b_to_a
+                .total
+                .checked_div(v.rounds)
+                .unwrap_or_default(),
+        )
+        .unwrap();
+        writeln!(&mut out).unwrap();
+
+        total_rounds += v.rounds;
+        n_rounds += 1;
+        total_keys += v.keys_a_to_b.total;
+        total_keys += v.keys_b_to_a.total;
+    }
+
+    writeln!(&mut out).unwrap();
+    writeln!(
+        &mut out,
+        "{total_rounds} total sync rounds needed to converge {n_rounds} test \
+        samples (average {:.2} rounds, {} keys per pair)",
+        total_rounds as f32 / n_rounds as f32,
+        total_keys / n_rounds,
+    )
+    .unwrap();
+
+    insta::assert_snapshot!(out);
+}
+
+fn sync_single_inconsistency(mut rand: Lfsr) -> SyncStats {
+    let mut a = Node::default();
+    let mut b = Node::default();
+
+    // Populate the trees with identical keys
+    for _ in 0..N_VALUES {
+        let v = rand.next();
+        a.upsert(v.to_string(), v);
+        b.upsert(v.to_string(), v);
+    }
+
+    // Then upsert a key with a different value, guaranteeing it differs from
+    // what was already stored for this key (if at all).
+    //
+    // This causes a & b to diverge by a single key.
+    a.upsert("42".to_string(), 24);
 
     let mut result = SyncStats::default();
 
@@ -205,7 +294,7 @@ impl Node {
 /// Linear-feedback shift register based PRNG.
 ///
 /// Generates 65,535 unique values before cycling.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Lfsr(u16);
 
 impl Default for Lfsr {
