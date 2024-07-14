@@ -75,20 +75,22 @@ impl Hasher<32, &str> for MockHasher {
 
 #[cfg(test)]
 mod tests {
+    use crate::DEFAULT_LEVEL_BASE;
+
     use super::*;
 
     #[test]
     fn test_mock_hasher() {
         let got = MockHasher::default().hash(&LevelKey::new("A", 0));
-        assert_eq!(level(&got), 0);
+        assert_eq!(level(&got, DEFAULT_LEVEL_BASE), 0);
 
         let got = MockHasher::default().hash(&LevelKey::new("A", 1));
-        assert_eq!(level(&got), 1);
+        assert_eq!(level(&got, DEFAULT_LEVEL_BASE), 1);
 
         let got = MockHasher::default().hash(&LevelKey::new("key_A", 2));
-        assert_eq!(level(&got), 2);
+        assert_eq!(level(&got, DEFAULT_LEVEL_BASE), 2);
 
         let got = MockHasher::default().hash(&LevelKey::new("key_A", 10));
-        assert_eq!(level(&got), 10);
+        assert_eq!(level(&got, DEFAULT_LEVEL_BASE), 10);
     }
 }

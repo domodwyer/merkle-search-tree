@@ -1,4 +1,4 @@
-use std::{fmt::Debug, marker::PhantomData};
+use std::{fmt::Debug, marker::PhantomData, num::NonZeroU8};
 
 use siphasher::sip128::SipHasher24;
 
@@ -14,6 +14,9 @@ use crate::{
 
 /// An alias for the default hash implementation.
 pub(crate) type DefaultHasher = SipHasher;
+
+/// The default level base used when computing the tree level a hash belongs to.
+pub(crate) const DEFAULT_LEVEL_BASE: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(16) }; // Safety: Not 0
 
 /// An implementation of the Merkle Search Tree as described in [Merkle Search
 /// Trees: Efficient State-Based CRDTs in Open Networks][paper].
@@ -107,6 +110,7 @@ pub struct MerkleSearchTree<K, V, H = DefaultHasher, const N: usize = 16> {
 
     root: Page<N, K>,
     root_hash: Option<RootHash>,
+    level_base: NonZeroU8,
 
     _value_type: PhantomData<V>,
 }
@@ -118,6 +122,7 @@ impl<K, V> Default for MerkleSearchTree<K, V> {
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
+            level_base: DEFAULT_LEVEL_BASE,
             _value_type: Default::default(),
         }
     }
@@ -133,6 +138,7 @@ impl<K, V, H, const N: usize> MerkleSearchTree<K, V, H, N> {
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
+            level_base: DEFAULT_LEVEL_BASE,
             _value_type: PhantomData,
         }
     }
@@ -298,7 +304,7 @@ where
     #[inline]
     pub fn upsert(&mut self, key: K, value: &'_ V) {
         let value_hash = ValueDigest::new(self.hasher.hash(value));
-        let level = digest::level(&self.hasher.hash(&key));
+        let level = digest::level(&self.hasher.hash(&key), self.level_base);
 
         // Invalidate the root hash - it always changes when a key is upserted.
         self.root_hash = None;
@@ -329,6 +335,7 @@ impl<H> crate::builder::Builder<H> {
             tree_hasher: SipHasher24::default(),
             root: Page::new(0, vec![]),
             root_hash: None,
+            level_base: self.level_base,
             _value_type: PhantomData,
         }
     }
@@ -398,16 +405,16 @@ mod tests {
     #[test]
     fn test_level_generation() {
         let h = Digest::new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(digest::level(&h), 32);
+        assert_eq!(digest::level(&h, DEFAULT_LEVEL_BASE), 32);
 
         let h = Digest::new([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(digest::level(&h), 0);
+        assert_eq!(digest::level(&h, DEFAULT_LEVEL_BASE), 0);
 
         let h = Digest::new([0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(digest::level(&h), 1);
+        assert_eq!(digest::level(&h, DEFAULT_LEVEL_BASE), 1);
 
         let h = Digest::new([0, 0x10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(digest::level(&h), 3);
+        assert_eq!(digest::level(&h, DEFAULT_LEVEL_BASE), 3);
     }
 
     macro_rules! test_insert {
@@ -816,6 +823,39 @@ mod tests {
             // The iterator must yield all keys in the same order as a (sorted!)
             // BTreeSet to satisfy the invariant.
             assert!(inserted.into_iter().eq(got));
+        }
+
+        // Assert that lowering the level base decreases the page count
+        // (increasing the page size proportionally).
+        #[test]
+        fn prop_varying_b_changes_page_count(
+            low in 5_u8..10,     // A "low" B value
+            high in 200_u8..210, // A "higher" B value
+        ) {
+            let low_base_page_count = {
+                let low = NonZeroU8::new(low).unwrap();
+                let mut t = Builder::default().with_level_base(low).build();
+                for i in (0..u64::MAX).rev().take(1_000) {
+                    t.upsert(IntKey::new(i), &i);
+                }
+
+                t.root_hash();
+                t.serialise_page_ranges().map(|v| v.len()).unwrap()
+            };
+
+            let high_base_page_count = {
+                let high = NonZeroU8::new(high).unwrap();
+                let mut t = Builder::default().with_level_base(high).build();
+                for i in (0..u64::MAX).rev().take(1_000) {
+                    t.upsert(IntKey::new(i), &i);
+                }
+
+                t.root_hash();
+                t.serialise_page_ranges().map(|v| v.len()).unwrap()
+            };
+
+            // The "low" B value yields more pages than the "high" B value.
+            assert!(low_base_page_count >= high_base_page_count);
         }
     }
 

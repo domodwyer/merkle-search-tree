@@ -1,3 +1,5 @@
+use std::num::NonZeroU8;
+
 /// A hash function outputting a fixed-length digest of `N` bytes.
 ///
 /// The hash function must produce strong digests with a low probability of
@@ -67,11 +69,13 @@ impl<const N: usize> std::fmt::Display for Digest<N> {
     }
 }
 
+// TODO(dom:doc): update this
+
 /// Extract the number of leading 0's when expressed as base 16 digits, defining
 /// the tree level the hash should reside at.
-pub(crate) fn level<const N: usize>(v: &Digest<N>) -> u8 {
+pub(crate) fn level<const N: usize>(v: &Digest<N>, base: NonZeroU8) -> u8 {
     let mut out = 0;
-    for v in v.0.into_iter().map(zero_prefix_len) {
+    for v in v.0.into_iter().map(|v| base_count_zero(v, base)) {
         match v {
             2 => out += 2,
             1 => return out + 1,
@@ -82,33 +86,22 @@ pub(crate) fn level<const N: usize>(v: &Digest<N>) -> u8 {
     out
 }
 
-// Returns the number of consecutive zero characters when `v` is represented as
-// a base16 string (evaluated LSB to MSB).
-fn zero_prefix_len(v: u8) -> u8 {
-    // Implemented as a look-up table for fast calculation.
-    match v {
-        0x00 => 2,
-        0x10 => 1,
-        0x20 => 1,
-        0x30 => 1,
-        0x40 => 1,
-        0x50 => 1,
-        0x60 => 1,
-        0x70 => 1,
-        0x80 => 1,
-        0x90 => 1,
-        0xA0 => 1,
-        0xB0 => 1,
-        0xC0 => 1,
-        0xD0 => 1,
-        0xE0 => 1,
-        0xF0 => 1,
-        _ => 0,
+const fn base_count_zero(v: u8, base: NonZeroU8) -> u8 {
+    if v == 0 {
+        return 2;
     }
+
+    if v % base.get() == 0 {
+        return 1;
+    }
+
+    0
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::DEFAULT_LEVEL_BASE;
+
     use super::*;
 
     #[test]
@@ -116,5 +109,57 @@ mod tests {
         let b = [42, 42, 42, 42];
         let d = Digest::new(b);
         assert_eq!(b, *d.as_bytes());
+    }
+
+    /// Validate the current level derivation scheme is compatible (produces the
+    /// same output for a given input) as the original algorithm used.
+    #[test]
+    fn test_compatibility_b16() {
+        fn old_algorithm(v: u8) -> u8 {
+            match v {
+                0x00 => 2,
+                0x10 => 1,
+                0x30 => 1,
+                0x20 => 1,
+                0x40 => 1,
+                0x50 => 1,
+                0x60 => 1,
+                0x70 => 1,
+                0x80 => 1,
+                0x90 => 1,
+                0xA0 => 1,
+                0xB0 => 1,
+                0xC0 => 1,
+                0xD0 => 1,
+                0xE0 => 1,
+                0xF0 => 1,
+                _ => 0,
+            }
+        }
+
+        for i in 0..u8::MAX {
+            assert_eq!(old_algorithm(i), base_count_zero(i, 16.try_into().unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_prefix_lens() {
+        let got = level(&Digest::new([0x00, 0x00, 0x00, 0x11]), DEFAULT_LEVEL_BASE);
+        assert_eq!(got, 6);
+
+        let got = level(&Digest::new([0x11, 0x00, 0x00, 0x00]), DEFAULT_LEVEL_BASE);
+        assert_eq!(got, 0);
+
+        // Stops after the first non-zero value
+        let got = level(&Digest::new([0x00, 0x10, 0x00, 0x11]), DEFAULT_LEVEL_BASE);
+        assert_eq!(got, 3);
+
+        // Matches the base
+        let got = level(&Digest::new([0x00, 16]), DEFAULT_LEVEL_BASE);
+        assert_eq!(got, 3);
+
+        // Wrap-around the base
+        let got = level(&Digest::new([0x00, 17]), DEFAULT_LEVEL_BASE);
+        assert_eq!(got, 2);
     }
 }
