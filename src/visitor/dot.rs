@@ -174,9 +174,9 @@ impl DotVisitor {
     }
 }
 
-fn clean_name<'a, T: 'a>(name: T) -> String
+fn clean_name<'a, T>(name: T) -> String
 where
-    T: std::fmt::Display,
+    T: std::fmt::Display + 'a,
 {
     name.to_string()
         .chars()
