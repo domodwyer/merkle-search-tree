@@ -39,3 +39,8 @@ harness = false
 
 [package.metadata.docs.rs]
 all-features = true
+
+# Allow the cfg(not(fuzzing)) provided by cargo-fuzz to disable specific debug
+# assertions to increase coverage.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
