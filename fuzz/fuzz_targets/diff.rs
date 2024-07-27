@@ -3,7 +3,7 @@
 use libfuzzer_sys::{arbitrary::Arbitrary, fuzz_target};
 use merkle_search_tree::{
     diff::{diff, PageRange},
-    digest::{Digest, PageDigest},
+    digest::PageDigest,
 };
 
 // An owned PageRange payload, from which a PageRange instance will be
