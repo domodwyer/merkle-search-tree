@@ -7,50 +7,35 @@ jobs:
     strategy:
       matrix:
         feature_flags: ["no-default-features", "all-features"]
+
     runs-on: ubuntu-latest
     container:
       image: rust:latest
+
     steps:
+    - name: Ensure node is installed for act checkout
+      if: ${{ env.ACT }}
+      run: command -v node || (apt update && apt install -y nodejs)
 
     - uses: actions/checkout@v4
 
-    - name: fmt
+    - name: Install clippy & rustfmt
       run: rustup component add clippy rustfmt
 
-    - name: fmt
+    - name: Format
       run: cargo fmt --all -- --check
 
-    - name: build
+    - name: Build
       run: cargo build --${{matrix.feature_flags}} --verbose
 
-    - name: test
+    - name: Test
       run: cargo test --${{matrix.feature_flags}} --verbose
 
-    - name: build benchmarks
+    - name: Build benchmarks
       run: cargo test --${{matrix.feature_flags}} --benches --no-run --verbose
 
-    - name: clippy
+    - name: Clippy
       run: cargo clippy --${{matrix.feature_flags}} -- -D warnings
 
-    - name: docs
+    - name: Docs
       run: cargo doc --${{matrix.feature_flags}} --document-private-items --no-deps
-
-  fuzz-build:
-    strategy:
-      matrix:
-        feature_flags: ["no-default-features", "all-features"]
-    runs-on: ubuntu-latest
-    container:
-      image: rust:latest
-    steps:
-
-    - uses: actions/checkout@v4
-
-    - name: Install cargo-fuzz
-      run: cargo install -f cargo-fuzz --all-features
-
-    - name: Install nightly
-      run: rustup toolchain install nightly
-
-    - name: Build fuzz tests
-      run: cargo +nightly fuzz build --${{matrix.feature_flags}} --verbose

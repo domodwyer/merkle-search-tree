@@ -1,0 +1,30 @@
+name: fuzz
+
+on: [push, pull_request]
+
+jobs:
+  # Run each fuzz target for 60s.
+  fuzz:
+    strategy:
+      matrix:
+        fuzz_targets:
+          - converge
+          - diff
+          - tree
+
+    runs-on: ubuntu-latest
+    container:
+      image: rustlang/rust:nightly
+
+    steps:
+    - name: Ensure node is installed for act checkout
+      if: ${{ env.ACT }}
+      run: command -v node || (apt update && apt install -y nodejs)
+
+    - uses: actions/checkout@v4
+
+    - name: Install cargo-fuzz
+      run: cargo install -f cargo-fuzz --all-features
+
+    - name: Run fuzzer
+      run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=60
