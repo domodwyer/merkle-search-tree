@@ -10,6 +10,7 @@ documentation = "https://docs.rs/merkle-search-tree"
 repository = "https://github.com/domodwyer/merkle-search-tree"
 keywords = ["merkle", "tree", "crdt", "anti-entropy", "hash"]
 categories = ["data-structures", "cryptography"]
+exclude = [".github"]
 
 [dependencies]
 base64 = { version = "0.22.0", optional = true }
