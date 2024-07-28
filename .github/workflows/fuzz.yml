@@ -19,11 +19,20 @@ jobs:
     steps:
     - name: Ensure node is installed for act checkout
       if: ${{ env.ACT }}
-      run: command -v node || (apt update && apt install -y nodejs)
+      run: command -v node || (apt update && apt install -y nodejs zstd)
 
-    - uses: actions/checkout@v4
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Cache cargo-fuzz
+      id: cache-cargo-fuzz
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-cargo-fuzz
+        path: /usr/local/cargo/bin/cargo-fuzz
 
     - name: Install cargo-fuzz
+      if: steps.cache-cargo-fuzz.outputs.cache-hit != 'true'
       run: cargo install -f cargo-fuzz --all-features
 
     - name: Run fuzzer
