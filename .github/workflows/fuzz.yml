@@ -1,6 +1,10 @@
 name: fuzz
 
-on: [push, pull_request]
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [ master ]
 
 jobs:
   # Run each fuzz target for 60s.

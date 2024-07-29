@@ -1,0 +1,43 @@
+name: lint
+
+on:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [ master ]
+
+jobs:
+  lint:
+    strategy:
+      matrix:
+        feature_flags: ["no-default-features", "all-features"]
+
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+    steps:
+
+      - name: ensure node is installed for act
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
+
+      - uses: actions/checkout@v4
+
+      - name: Cache target dir
+        id: target-dir
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-target-dir-${{matrix.feature_flags}}
+          path: target
+
+      - name: rustup add components
+        run: rustup component add clippy rustfmt
+
+      - name: fmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy
+        run: cargo clippy --workspace --${{matrix.feature_flags}} -- -D warnings
+
+      - name: docs
+        run: cargo doc --workspace --all-features --document-private-items --no-deps
