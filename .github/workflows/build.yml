@@ -15,6 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: rust:latest
+      env:
+        CARGO_HOME: "/cargo/"
+
     steps:
 
       - name: ensure node is installed for act
@@ -22,6 +25,13 @@ jobs:
         run: command -v node || (apt update && apt install -y nodejs zstd)
 
       - uses: actions/checkout@v4
+
+      - name: Cache cargo dir
+        id: cargo-dir
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-cargo
+          path: /cargo
 
       - name: Cache target dir
         id: target-dir

@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: rustlang/rust:nightly
+      env:
+        CARGO_HOME: "/cargo/"
 
     steps:
     - name: Ensure node is installed for act checkout
@@ -27,6 +29,13 @@ jobs:
 
     - name: Checkout source
       uses: actions/checkout@v4
+
+    - name: Cache cargo dir
+      id: cargo-dir
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-cargo-nightly
+        path: /cargo
 
     - name: Cache cargo-fuzz
       id: cache-cargo-fuzz
