@@ -111,8 +111,8 @@ fn test_uniform_sync_rounds() {
     writeln!(&mut out).unwrap();
     writeln!(
         &mut out,
-        "{total_rounds} total sync rounds needed to converge {n_rounds} test \
-        samples (average {:.2} rounds, {} keys per pair)",
+        "{total_rounds} total sync rounds needed to converge {n_rounds} test samples (average \
+         {:.2} rounds, {} keys per pair)",
         total_rounds as f32 / n_rounds as f32,
         total_keys / n_rounds,
     )
@@ -198,8 +198,8 @@ fn test_single_diff_sync_rounds() {
     writeln!(&mut out).unwrap();
     writeln!(
         &mut out,
-        "{total_rounds} total sync rounds needed to converge {n_rounds} test \
-        samples (average {:.2} rounds, {} keys per pair)",
+        "{total_rounds} total sync rounds needed to converge {n_rounds} test samples (average \
+         {:.2} rounds, {} keys per pair)",
         total_rounds as f32 / n_rounds as f32,
         total_keys / n_rounds,
     )

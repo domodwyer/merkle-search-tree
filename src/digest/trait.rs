@@ -100,9 +100,8 @@ const fn base_count_zero(v: u8, base: NonZeroU8) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::DEFAULT_LEVEL_BASE;
-
     use super::*;
+    use crate::DEFAULT_LEVEL_BASE;
 
     #[test]
     fn test_as_bytes() {

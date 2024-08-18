@@ -75,9 +75,8 @@ impl Hasher<32, &str> for MockHasher {
 
 #[cfg(test)]
 mod tests {
-    use crate::DEFAULT_LEVEL_BASE;
-
     use super::*;
+    use crate::DEFAULT_LEVEL_BASE;
 
     #[test]
     fn test_mock_hasher() {
