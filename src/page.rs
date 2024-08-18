@@ -641,7 +641,10 @@ fn find_idx<const N: usize, K>(nodes: &[Node<N, K>], key: &K) -> usize
 where
     K: PartialOrd,
 {
-    nodes.partition_point(|v| *key > *v.key())
+    nodes
+        .iter()
+        .position(|v| *key <= *v.key())
+        .unwrap_or(nodes.len())
 }
 
 #[cfg(test)]
