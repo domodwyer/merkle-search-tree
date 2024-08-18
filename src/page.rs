@@ -237,7 +237,7 @@ where
                 // into.
                 //
                 // Otherwise insert this node into the high page.
-                let ptr = self.nodes.partition_point(|v| key > *v.key());
+                let ptr = find_idx(&self.nodes, &key);
 
                 let page = match self.nodes.get_mut(ptr) {
                     Some(v) => {
@@ -261,7 +261,9 @@ where
                 // higher than the desired level.
                 //
                 // Returning false will case the parent will insert a new page.
-                return UpsertResult::InsertIntermediate(key); // No need to update the hash of this subtree
+                return UpsertResult::InsertIntermediate(key); // No need to
+                                                              // update the hash
+                                                              // of this subtree
             }
         }
 
@@ -278,7 +280,7 @@ where
     /// Insert a node into this page, splitting any child pages as necessary.
     pub(crate) fn upsert_node(&mut self, key: K, value: ValueDigest<N>) {
         // Find the appropriate child pointer to follow.
-        let idx = self.nodes.partition_point(|v| key > *v.key());
+        let idx = find_idx(&self.nodes, &key);
 
         // At this point the new key should be inserted has been identified -
         // node_idx points to the first node greater-than-or-equal to key.
@@ -367,7 +369,7 @@ where
 
     // A page should be split into two parts - one page containing the elements
     // less-than "key", and one containing parts greater-or-equal to "key".
-    let partition_idx = page_ref.nodes.partition_point(|v| key > v.key());
+    let partition_idx = find_idx(&page_ref.nodes, key);
 
     // All the nodes are greater-than-or-equal-to "key" - there's no less-than
     // nodes to return.
@@ -632,6 +634,14 @@ pub(crate) fn insert_intermediate_page<const N: usize, T, K>(
         debug_assert!(level > gte_page.level);
         child_page.high_page = Some(Box::new(gte_page));
     }
+}
+
+/// Return the index into `nodes` at which `key` should be located.
+fn find_idx<const N: usize, K>(nodes: &[Node<N, K>], key: &K) -> usize
+where
+    K: PartialOrd,
+{
+    nodes.partition_point(|v| *key > *v.key())
 }
 
 #[cfg(test)]
