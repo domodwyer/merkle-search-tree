@@ -64,4 +64,4 @@ jobs:
 
       - name: Publish crate
         if: ${{ env.CARGO_REGISTRY_TOKEN != '' }}
-        run: cargo publish --no-confirm
+        run: cargo publish
