@@ -57,4 +57,12 @@ jobs:
         path: fuzz/corpus/${{matrix.fuzz_targets}}
 
     - name: Run fuzzer
+      id: fuzz
       run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=120
+
+    - name: Upload crash
+      uses: actions/upload-artifact@v3
+      if: failure() && steps.fuzz.outcome == 'failure'
+      with:
+        name: fuzz-crash
+        path: fuzz/artifacts/${{matrix.fuzz_targets}}
