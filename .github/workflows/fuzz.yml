@@ -48,5 +48,13 @@ jobs:
       if: steps.cache-cargo-fuzz.outputs.cache-hit != 'true'
       run: cargo install -f cargo-fuzz --all-features
 
+    - name: Cache corpus
+      id: cache-fuzz-corpus
+      uses: actions/cache@v4
+      with:
+        enableCrossOsArchive: true
+        key: fuzz-corpus-${{matrix.fuzz_targets}}
+        path: fuzz/corpus/${{matrix.fuzz_targets}}
+
     - name: Run fuzzer
       run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=120
