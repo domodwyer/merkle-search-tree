@@ -66,7 +66,7 @@ millions/billions of keys per second:
 | ------------ | --------------- | ------------- | --------- | ----------------- | ------------------- |
 | 100 keys     | 6µs             | 3µs           | 98ns      | 130ns             | 261ns               |
 | 1,000 keys   | 80µs            | 38µs          | 837ns     | 574ns             | 3µs                 |
-| 10,000 keys  | 1100us          | 388us         | 10µs      | 4µs               | 28µs                |
+| 10,000 keys  | 1.1ms           | 388us         | 10µs      | 4µs               | 28µs                |
 | 100,000 keys | 12ms            | 3ms           | 112µs     | 36µs              | 225µs               |
 
 The above measurements capture the single-threaded performance of operations
