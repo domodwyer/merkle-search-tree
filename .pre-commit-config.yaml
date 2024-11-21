@@ -19,32 +19,32 @@ repos:
     rev: v3.5.0
     hooks:
       - id: rust-clippy
-        stages: [commit, push]
+        stages: [pre-commit, pre-push]
 
       - id: rust-test
-        stages: [commit, push]
+        stages: [pre-commit, pre-push]
 
       - id: rust-fmt
-        stages: [commit, push]
+        stages: [pre-commit, pre-push]
 
       - id: rust-doc
-        stages: [push]
+        stages: [pre-push]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 66ecc5beb42a1d1adb6eb3c18e53bce4bc56fdba
     hooks:
       - id: check-executables-have-shebangs
-        stages: [commit, manual]
+        stages: [pre-commit, manual]
       - id: check-json
-        stages: [commit, manual]
+        stages: [pre-commit, manual]
       - id: check-yaml
         args: ["--allow-multiple-documents"]
-        stages: [commit, manual]
+        stages: [pre-commit, manual]
       - id: check-merge-conflict
-        stages: [commit, manual]
+        stages: [pre-commit, manual]
       - id: mixed-line-ending
         args: ["--fix=no"]
-        stages: [commit, manual]
+        stages: [pre-commit, manual]
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: 3c7d67d39ad19fbcc3a2c66bc89708fe27347b6d
