@@ -49,4 +49,4 @@ jobs:
       run: cargo install -f cargo-fuzz --all-features
 
     - name: Run fuzzer
-      run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=60
+      run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=120
