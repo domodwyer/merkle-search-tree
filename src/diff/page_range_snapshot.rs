@@ -74,7 +74,7 @@ impl<K> From<Vec<OwnedPageRange<K>>> for PageRangeSnapshot<K> {
 
 impl<K> FromIterator<OwnedPageRange<K>> for PageRangeSnapshot<K> {
     fn from_iter<T: IntoIterator<Item = OwnedPageRange<K>>>(iter: T) -> Self {
-        Self(iter.into_iter().map(OwnedPageRange::from).collect())
+        Self(iter.into_iter().collect())
     }
 }
 

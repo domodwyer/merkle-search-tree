@@ -20,7 +20,7 @@ pub(crate) struct DiffListBuilder<'a, K> {
     consistent: RangeList<'a, K>,
 }
 
-impl<'a, K> Default for DiffListBuilder<'a, K> {
+impl<K> Default for DiffListBuilder<'_, K> {
     fn default() -> Self {
         Self {
             inconsistent: Default::default(),

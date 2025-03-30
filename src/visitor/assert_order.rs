@@ -19,7 +19,7 @@ pub(crate) struct InvariantAssertOrder<'a, const N: usize, T, K> {
     level_stack: Vec<u8>,
 }
 
-impl<'a, const N: usize, T, K> InvariantAssertOrder<'a, N, T, K> {
+impl<const N: usize, T, K> InvariantAssertOrder<'_, N, T, K> {
     /// Wrap `T` in this decorator.
     pub(crate) fn new(inner: T) -> Self {
         Self {

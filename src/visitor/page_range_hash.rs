@@ -7,7 +7,7 @@ pub(crate) struct PageRangeHashVisitor<'a, K> {
     out: Vec<PageRange<'a, K>>,
 }
 
-impl<'a, K> Default for PageRangeHashVisitor<'a, K> {
+impl<K> Default for PageRangeHashVisitor<'_, K> {
     fn default() -> Self {
         Self {
             out: Default::default(),

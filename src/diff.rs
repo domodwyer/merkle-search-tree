@@ -21,7 +21,7 @@ pub struct DiffRange<'a, K> {
     end: &'a K,
 }
 
-impl<'a, K> Clone for DiffRange<'a, K> {
+impl<K> Clone for DiffRange<'_, K> {
     fn clone(&self) -> Self {
         Self {
             start: self.start,
@@ -30,7 +30,7 @@ impl<'a, K> Clone for DiffRange<'a, K> {
     }
 }
 
-impl<'a, K> DiffRange<'a, K> {
+impl<K> DiffRange<'_, K> {
     /// Returns true if the range within `self` overlaps any portion of the
     /// range within `p`.
     pub(crate) fn overlaps(&self, p: &Self) -> bool
