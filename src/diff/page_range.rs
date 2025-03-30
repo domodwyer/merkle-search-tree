@@ -96,7 +96,7 @@ pub struct PageRange<'a, K> {
     hash: PageDigest,
 }
 
-impl<'a, K> Display for PageRange<'a, K>
+impl<K> Display for PageRange<'_, K>
 where
     K: Display,
 {
@@ -105,7 +105,7 @@ where
     }
 }
 
-impl<'a, K> Clone for PageRange<'a, K> {
+impl<K> Clone for PageRange<'_, K> {
     fn clone(&self) -> Self {
         Self {
             start: self.start,

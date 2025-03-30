@@ -1,9 +1,10 @@
 name: release
-
 on:
   push:
     tags:
       - "v*.*.*"
+
+permissions: {}
 
 jobs:
   build:
@@ -22,32 +23,39 @@ jobs:
   check_version:
     needs: [build, test, lint, fuzz]
     runs-on: ubuntu-latest
+    env:
+      REF_NAME: ${{ github.ref_name }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check crate version
-        run: "[[ \"v$(yq '.package.version' Cargo.toml)\" == \"${{ github.ref_name }}\" ]]"
+        run: '[[ "v$(yq ''.package.version'' Cargo.toml)" == "$REF_NAME" ]]'
 
   # Create a github release
   github_release:
     needs: [build, test, lint, fuzz, check_version]
 
+    permissions:
+      contents: write
+
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda
         with:
           generate_release_notes: true
 
   # Publish the crate (scoping the secret to only this job)
   publish_crate:
     needs: [build, test, lint, fuzz, github_release]
-    permissions:
-      contents: write
     env:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
@@ -61,6 +69,8 @@ jobs:
         run: command -v node || (apt update && apt install -y nodejs)
 
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Publish crate
         if: ${{ env.CARGO_REGISTRY_TOKEN != '' }}

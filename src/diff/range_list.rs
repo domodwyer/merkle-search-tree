@@ -9,7 +9,7 @@ pub(crate) struct RangeList<'a, K> {
     sync_ranges: Vec<DiffRange<'a, K>>,
 }
 
-impl<'a, K> Default for RangeList<'a, K> {
+impl<K> Default for RangeList<'_, K> {
     fn default() -> Self {
         Self {
             sync_ranges: Default::default(),

@@ -1,10 +1,11 @@
 name: fuzz
-
 on:
   workflow_call:
   pull_request:
   push:
-    branches: [ master ]
+    branches: [master]
+
+permissions: {}
 
 jobs:
   # Run each fuzz target for 60s.
@@ -23,46 +24,50 @@ jobs:
         CARGO_HOME: "/cargo/"
 
     steps:
-    - name: Ensure node is installed for act checkout
-      if: ${{ env.ACT }}
-      run: command -v node || (apt update && apt install -y nodejs zstd)
+      - name: Ensure node is installed for act checkout
+        if: ${{ env.ACT }}
+        run: command -v node || (apt update && apt install -y nodejs zstd)
 
-    - name: Checkout source
-      uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Cache cargo dir
-      id: cargo-dir
-      uses: actions/cache@v4
-      with:
-        key: ${{ runner.os }}-cargo-nightly
-        path: /cargo
+      - name: Cache cargo dir
+        id: cargo-dir
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-cargo-nightly-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-nightly
+          path: /cargo
 
-    - name: Cache cargo-fuzz
-      id: cache-cargo-fuzz
-      uses: actions/cache@v4
-      with:
-        key: ${{ runner.os }}-cargo-fuzz
-        path: /usr/local/cargo/bin/cargo-fuzz
+      - name: Install cargo-fuzz
+        if: steps.cargo-dir.outputs.cache-hit != 'true'
+        run: cargo install cargo-fuzz --all-features
 
-    - name: Install cargo-fuzz
-      if: steps.cache-cargo-fuzz.outputs.cache-hit != 'true'
-      run: cargo install -f cargo-fuzz --all-features
+      - name: Cache corpus
+        id: cache-fuzz-corpus
+        uses: actions/cache@v4
+        with:
+          enableCrossOsArchive: true
+          key: fuzz-corpus-${{matrix.fuzz_targets}}
+          path: fuzz/corpus/${{matrix.fuzz_targets}}
 
-    - name: Cache corpus
-      id: cache-fuzz-corpus
-      uses: actions/cache@v4
-      with:
-        enableCrossOsArchive: true
-        key: fuzz-corpus-${{matrix.fuzz_targets}}
-        path: fuzz/corpus/${{matrix.fuzz_targets}}
+      - name: Cache fuzz target dir
+        id: target-dir
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-fuzz-target-dir-${{matrix.fuzz_targets}}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-fuzz-target-dir-${{matrix.fuzz_targets}}
+          path: fuzz/target
 
-    - name: Run fuzzer
-      id: fuzz
-      run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=120
+      - name: Run fuzzer
+        id: fuzz
+        run: cargo +nightly fuzz run ${{matrix.fuzz_targets}} -- -max_total_time=120
 
-    - name: Upload crash
-      uses: actions/upload-artifact@v3
-      if: failure() && steps.fuzz.outcome == 'failure'
-      with:
-        name: fuzz-crash
-        path: fuzz/artifacts/${{matrix.fuzz_targets}}
+      - name: Upload crash
+        uses: actions/upload-artifact@v4
+        if: failure() && steps.fuzz.outcome == 'failure'
+        with:
+          name: fuzz-crash
+          path: fuzz/artifacts/${{matrix.fuzz_targets}}
