@@ -16,7 +16,7 @@ use crate::{
 pub(crate) type DefaultHasher = SipHasher;
 
 /// The default level base used when computing the tree level a hash belongs to.
-pub(crate) const DEFAULT_LEVEL_BASE: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(16) }; // Safety: Not 0
+pub(crate) const DEFAULT_LEVEL_BASE: NonZeroU8 = NonZeroU8::new(16).unwrap();
 
 /// An implementation of the Merkle Search Tree as described in [Merkle Search
 /// Trees: Efficient State-Based CRDTs in Open Networks][paper].
