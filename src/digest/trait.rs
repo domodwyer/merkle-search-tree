@@ -91,7 +91,7 @@ const fn base_count_zero(v: u8, base: NonZeroU8) -> u8 {
         return 2;
     }
 
-    if v % base.get() == 0 {
+    if v.is_multiple_of(base.get()) {
         return 1;
     }
 
