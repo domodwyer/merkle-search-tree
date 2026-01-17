@@ -7,7 +7,6 @@
     clippy::explicit_iter_loop,
     clippy::future_not_send,
     clippy::todo,
-    clippy::use_self,
     missing_copy_implementations,
     missing_debug_implementations,
     unused_crate_dependencies,
