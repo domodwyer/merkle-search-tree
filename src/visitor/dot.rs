@@ -143,7 +143,7 @@ where
 
         let name = clean_name(node.key());
         self.link_stack
-            .push(Parent::Node(format!("page_{}:{}", page_id, &name)));
+            .push(Parent::Node(format!("page_{}:{}", page_id, name)));
 
         true
     }
@@ -153,7 +153,7 @@ where
 
         // Add this node to the page record
         let name = clean_name(node.key());
-        write!(buf, "<{}>·|{}|", &name, name).unwrap();
+        write!(buf, "<{}>·|{}|", name, name).unwrap();
 
         true
     }
